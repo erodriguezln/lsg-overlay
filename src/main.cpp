@@ -1,10 +1,6 @@
-// SDL_MAIN_USE_CALLBACKS: SDL manages the event loop; we implement the 4 callbacks.
 #define SDL_MAIN_USE_CALLBACKS 1
 #include <SDL3/SDL.h>
 #include <SDL3/SDL_main.h>
-// #include <SDL3_image/SDL_image.h>
-// #include <SDL3_mixer/SDL_mixer.h>
-// #include <SDL3_ttf/SDL_ttf.h>
 
 #include "main.h"
 #include "ui.h"
@@ -67,8 +63,6 @@ SDL_AppResult SDL_AppEvent(void *appstate, SDL_Event *event) {
         }
     }
 
-    state->app.handleEvent(*event);
-
     return SDL_APP_CONTINUE;
 }
 
@@ -80,8 +74,6 @@ SDL_AppResult SDL_AppIterate(void *appstate) {
     const Uint64 now = SDL_GetTicksNS();
     state->delta_time = static_cast<float>(now - state->last_time) * 1e-9f;
     state->last_time = now;
-
-    state->app.update(state->delta_time);
 
     UI_BeginFrame();
     UI_BuildWindows(*state);
@@ -97,7 +89,6 @@ SDL_AppResult SDL_AppIterate(void *appstate) {
     // render game/scene before imgui overlay
     int w, h;
     SDL_GetRenderOutputSize(state->renderer, &w, &h);
-    state->app.render(state->renderer, w, h);
 
     UI_Render(state->renderer);
     SDL_RenderPresent(state->renderer);

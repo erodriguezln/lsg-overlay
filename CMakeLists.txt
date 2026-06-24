@@ -133,7 +133,6 @@ target_link_libraries(imgui PUBLIC SDL3::SDL3)
 set(SOURCES
         src/main.cpp
         src/ui.cpp
-        src/app.cpp
 )
 
 add_executable(${PROJECT_NAME} ${SOURCES})
