@@ -1,11 +1,14 @@
 #pragma once
 
 #include <SDL3/SDL.h>
+#include <netowork.h>
 
 // AppState holds every object that must survive between SDL callbacks.
 struct AppState {
     SDL_Window *window = nullptr;
     SDL_Renderer *renderer = nullptr;
+
+    Network network;
 
     // Demo window toggle — press the button in the overlay to show/hide it.
     bool show_demo_window = true;

@@ -42,6 +42,10 @@ SDL_AppResult SDL_AppInit(void **appstate, int argc, char **argv) {
 
     UI_Init(state->window, state->renderer);
 
+    if (state->network.fetchMechanics()) {
+        state->network.printMechanics();
+    }
+
     return SDL_APP_CONTINUE;
 }
 
