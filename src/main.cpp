@@ -17,7 +17,10 @@ SDL_AppResult SDL_AppInit(void **appstate, int argc, char **argv) {
         return SDL_APP_FAILURE;
     }
 
-    auto *state = new AppState();
+    // TODO: Tengo que pasarlo de forma dinamica
+    int TEMP_PLAYER_ID = 12;
+    auto *state = new AppState(TEMP_PLAYER_ID);
+
     *appstate = state;
 
     // Window & Renderer
@@ -42,8 +45,8 @@ SDL_AppResult SDL_AppInit(void **appstate, int argc, char **argv) {
 
     UI_Init(state->window, state->renderer);
 
-    if (state->network.fetchMechanics()) {
-        state->network.printMechanics();
+    if (state->network.fetchPlayer()) {
+        state->network.printDebug();
     }
 
     return SDL_APP_CONTINUE;
