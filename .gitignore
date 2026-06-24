@@ -1,0 +1,24 @@
+# IDE
+.idea/
+cmake-build-*/
+.vscode/
+*.swp
+*.swo
+
+# Build
+build/
+out/
+*.o
+*.obj
+*.exe
+*.dll
+*.exp
+*.lib
+
+# CMake
+CMakeCache.txt
+CMakeFiles/
+CMakeUserPresets.json
+cmake_install.cmake
+Makefile
+compile_commands.json
