@@ -6,7 +6,6 @@
 struct Info {
     HWND selfHwnd = nullptr;
     HWND targetHwnd = nullptr;
-    bool visible = true;
     bool attached = false;
 };
 

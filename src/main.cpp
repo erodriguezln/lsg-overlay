@@ -12,7 +12,7 @@
 static constexpr int WIDTH = 1280, HEIGHT = 800;
 
 void setOverlayVisibility(AppState *state) {
-    if (state->info.visible) {
+    if (state->show_overlay) {
         // Permite que la ventana SDL reciba eventos de entrada
         EnableWindow(state->info.selfHwnd, TRUE);
         // Muestra la ventana SDL sin activarla (no toma el foco)
@@ -40,16 +40,6 @@ void resizeSdlWindow(AppState *state) {
     }
 
     if (!state->show_overlay) {
-        SetWindowPos(
-            state->info.selfHwnd,
-            nullptr,
-            -32000,
-            -32000,
-            0,
-            0,
-            SWP_NOACTIVATE | SWP_NOOWNERZORDER | SWP_NOZORDER
-        );
-
         return;
     }
 

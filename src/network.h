@@ -16,7 +16,7 @@
 #include <atomic>
 
 struct PlayerResponse {
-    int id_players;
+    int id_players = 0;
     std::string name;
     std::string email;
     std::optional<int> age;
