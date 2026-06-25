@@ -51,6 +51,42 @@ static HWND FindTargetWindow() {
 
 static constexpr int WIDTH = 1280, HEIGHT = 800;
 
+void resizeSdlWindow(AppState *state) {
+    if (!state->info.targetHwnd || !IsWindow(state->info.targetHwnd)) {
+        SDL_Log("Target window not found or invalid.");
+        return;
+    }
+
+    if (!state->info.selfHwnd || !IsWindow(state->info.selfHwnd)) {
+        SDL_Log("SDL window handle is invalid.");
+        return;
+    }
+
+    RECT targetRect{};
+    GetClientRect(state->info.targetHwnd, &targetRect);
+
+    const int targetWidth = targetRect.right - targetRect.left;
+    const int targetHeight = targetRect.bottom - targetRect.top;
+    if (targetWidth <= 0 || targetHeight <= 0) {
+        SDL_Log("Target window has invalid dimensions.");
+        return;
+    }
+
+    // Se sincroniza el tamaño interno de la ventana SDL con el área cliente de la ventana objetivo
+    SDL_SetWindowSize(state->window, targetWidth, targetHeight);
+
+    // Se posiciona y redimensiona la ventana SDL para cubrir el área cliente de la ventana objetivo
+    SetWindowPos(
+        state->info.selfHwnd,
+        HWND_TOP,
+        0,
+        0,
+        targetWidth,
+        targetHeight,
+        SWP_NOACTIVATE | SWP_NOOWNERZORDER | SWP_FRAMECHANGED
+    );
+}
+
 static bool attachSdlWindowAsChild(AppState *state) {
     // Se obtiene el estilo actual de la ventana SDL
     LONG_PTR style = GetWindowLongPtr(state->info.selfHwnd, GWL_STYLE);
@@ -81,20 +117,27 @@ static bool attachSdlWindowAsChild(AppState *state) {
     state->info.attached = true;
 
     // Se fuerza la actualización del marco de la ventana SDL después de modificar sus estilos
-    SetWindowPos(
-        state->info.selfHwnd,
-        HWND_TOPMOST,
-        0,
-        0,
-        0,
-        0,
-        SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE | SWP_FRAMECHANGED
-    );
+    // SetWindowPos(
+    //     state->info.selfHwnd,
+    //     HWND_TOPMOST,
+    //     0,
+    //     0,
+    //     0,
+    //     0,
+    //     SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE | SWP_FRAMECHANGED
+    // );
+
+    resizeSdlWindow(state);
 
     return true;
 }
 
 bool attachOverlay(AppState *state) {
+    if (state->info.attached) {
+        SDL_Log("Overlay is already attached.");
+        return true;
+    }
+
     if (!state->info.targetHwnd || !IsWindow(state->info.targetHwnd)) {
         SDL_Log("Target window not found or invalid.");
         return false;
@@ -107,6 +150,7 @@ bool attachOverlay(AppState *state) {
 
     return attachSdlWindowAsChild(state);
 }
+
 
 SDL_AppResult SDL_AppInit(void **appstate, int argc, char **argv) {
     (void) argc;
@@ -127,6 +171,8 @@ SDL_AppResult SDL_AppInit(void **appstate, int argc, char **argv) {
     // Window & Renderer
     SDL_WindowFlags window_flags =
             SDL_WINDOW_RESIZABLE | SDL_WINDOW_HIDDEN | SDL_WINDOW_BORDERLESS | SDL_WINDOW_TRANSPARENT;
+
+    //TODO: podria crear con tamanio de videojuego o 0, 0 revisar.
     state->window = SDL_CreateWindow(APP_NAME, WIDTH, HEIGHT, window_flags);
     if (!state->window) {
         SDL_Log("Couldn't create window: %s", SDL_GetError());
@@ -160,7 +206,6 @@ SDL_AppResult SDL_AppInit(void **appstate, int argc, char **argv) {
     SDL_SetWindowPosition(state->window, SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED);
     SDL_ShowWindow(state->window);
 
-
     state->last_time = SDL_GetTicksNS();
 
     UI_Init(state->window, state->renderer);
@@ -180,12 +225,6 @@ SDL_AppResult SDL_AppEvent(void *appstate, SDL_Event *event) {
         return SDL_APP_SUCCESS;
     }
 
-    if (event->type == SDL_EVENT_KEY_DOWN) {
-        if (event->key.scancode == SDL_SCANCODE_ESCAPE) {
-            return SDL_APP_SUCCESS;
-        }
-    }
-
     return SDL_APP_CONTINUE;
 }
 
@@ -198,6 +237,11 @@ SDL_AppResult SDL_AppIterate(void *appstate) {
     state->delta_time = static_cast<float>(now - state->last_time) * 1e-9f;
     state->last_time = now;
 
+    if (state->info.attached) {
+        // TODO: Hacer que se redimensione solo si cambia el tamaño de la ventana objetivo
+        resizeSdlWindow(state);
+    }
+
     UI_BeginFrame();
     UI_BuildWindows(*state);
 
@@ -206,10 +250,6 @@ SDL_AppResult SDL_AppIterate(void *appstate) {
     // el alpha se mezcla con la ventana objetivo mediante DWM
     SDL_SetRenderDrawColor(state->renderer, 15, 15, 15, 100);
     SDL_RenderClear(state->renderer);
-
-    // render game/scene before imgui overlay
-    int w, h;
-    SDL_GetRenderOutputSize(state->renderer, &w, &h);
 
     UI_Render(state->renderer);
     SDL_RenderPresent(state->renderer);
