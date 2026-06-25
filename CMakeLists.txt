@@ -4,6 +4,9 @@ cmake_minimum_required(VERSION 3.30)
 get_filename_component(PROJECT_NAME_VAR "${CMAKE_CURRENT_SOURCE_DIR}" NAME)
 project(${PROJECT_NAME_VAR})
 
+# Set a default install directory early so all dependencies inherit it if needed
+set(CMAKE_INSTALL_PREFIX "C:/Dev/tesis/lsg-client/src/shared" CACHE PATH "Default install path" FORCE)
+
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
@@ -18,6 +21,10 @@ include(FetchContent)
 #     GIT_SHALLOW    TRUE
 # )
 # FetchContent_MakeAvailable(spdlog)
+
+# Disable installation of third-party dependencies to keep the install folder clean
+set(JSON_Install OFF CACHE BOOL "Disable json install" FORCE)
+set(HTTPLIB_INSTALL OFF CACHE BOOL "Disable httplib install" FORCE)
 
 # ── nlohmann/json (JSON library) ───────────────────────────────────────────
 # Uncomment to enable:
@@ -195,4 +202,13 @@ if (EXISTS "${CMAKE_SOURCE_DIR}/assets")
                 "$<TARGET_FILE_DIR:${PROJECT_NAME}>/assets"
         )
     endif ()
+endif ()
+
+# Installation
+# Install the executable target
+install(TARGETS ${PROJECT_NAME} DESTINATION .)
+
+# Install runtime DLLs (like SDL3.dll) on Windows
+if (WIN32)
+    install(FILES $<TARGET_RUNTIME_DLLS:${PROJECT_NAME}> DESTINATION . OPTIONAL)
 endif ()
