@@ -9,29 +9,43 @@ static HWND FindTargetWindow() {
     struct EnumData {
         HWND foundHwnd = nullptr;
     } data;
+
     EnumWindows([](HWND hwnd, LPARAM lParam) -> BOOL {
-        auto *d = reinterpret_cast<EnumData *>(lParam);
-        wchar_t title[256];
-        if (GetWindowTextW(hwnd, title, 256) > 0) {
-            if (wcsstr(title, L"Stardew Valley") != nullptr && IsWindowVisible(hwnd)) {
-                d->foundHwnd = hwnd;
-                return FALSE;
-            }
-            if (wcsstr(title, L"Pentiment") != nullptr && IsWindowVisible(hwnd)) {
-                d->foundHwnd = hwnd;
-                return FALSE;
-            }
-            if (wcsstr(title, L"Terraria") != nullptr && IsWindowVisible(hwnd)) {
-                d->foundHwnd = hwnd;
-                return FALSE;
-            }
-            if (wcsstr(title, L"Persona 5 Royal") != nullptr && IsWindowVisible(hwnd)) {
-                d->foundHwnd = hwnd;
-                return FALSE;
-            }
+        auto *data = reinterpret_cast<EnumData *>(lParam);
+
+        if (!IsWindowVisible(hwnd)) {
+            return TRUE;
         }
-        return TRUE;
+
+        if (GetWindow(hwnd, GW_OWNER) != nullptr) {
+            return TRUE;
+        }
+
+        wchar_t title[256]{};
+        if (GetWindowTextW(hwnd, title, 256) <= 0) {
+            return TRUE;
+        }
+
+        if (wcsstr(title, L"Stardew Valley") == nullptr) {
+            return TRUE;
+        }
+
+        RECT rect{};
+        if (!GetWindowRect(hwnd, &rect)) {
+            return TRUE;
+        }
+
+        int width = rect.right - rect.left;
+        int height = rect.bottom - rect.top;
+
+        if (width < 200 || height < 200) {
+            return TRUE;
+        }
+
+        data->foundHwnd = hwnd;
+        return FALSE;
     }, reinterpret_cast<LPARAM>(&data));
+
     return data.foundHwnd;
 }
 
@@ -54,11 +68,56 @@ SDL_AppResult SDL_AppInit(void **appstate, int argc, char **argv) {
     *appstate = state;
 
     // Window & Renderer
-    SDL_WindowFlags window_flags = SDL_WINDOW_RESIZABLE | SDL_WINDOW_HIDDEN;
+    SDL_WindowFlags window_flags = SDL_WINDOW_RESIZABLE | SDL_WINDOW_HIDDEN | SDL_WINDOW_BORDERLESS | SDL_WINDOW_TRANSPARENT;
     state->window = SDL_CreateWindow(APP_NAME, WIDTH, HEIGHT, window_flags);
     if (!state->window) {
         SDL_Log("Couldn't create window: %s", SDL_GetError());
         return SDL_APP_FAILURE;
+    }
+
+    // Obtiene el HWND de la ventana SDL y lo almacena en el estado de la aplicación
+    state->info.selfHwnd = static_cast<HWND>(SDL_GetPointerProperty(SDL_GetWindowProperties(state->window),
+                                                                    SDL_PROP_WINDOW_WIN32_HWND_POINTER, nullptr));
+    // TODO: Temporal, esto debera ser dinamnico...
+    state->info.targetHwnd = FindTargetWindow();
+
+    if (state->info.targetHwnd && IsWindow(state->info.targetHwnd)) {
+        // Se obtiene el estilo actual de la ventana SDL
+        LONG_PTR style = GetWindowLongPtr(state->info.selfHwnd, GWL_STYLE);
+        // Se eliminan los estilos de ventana independiente y con marco
+        style &= ~(WS_POPUP | WS_CAPTION | WS_THICKFRAME | WS_MINIMIZEBOX | WS_MAXIMIZEBOX | WS_SYSMENU | WS_BORDER);
+        // Se agrega el estilo WS_CHILD para preparar la ventana SDL como ventana hija
+        style |= WS_CHILD;
+        // Se establece el nuevo estilo de la ventana SDL
+        SetWindowLongPtr(state->info.selfHwnd, GWL_STYLE, style);
+
+        // Se obtiene el estilo extendido actual de la ventana SDL
+        LONG_PTR exStyle = GetWindowLongPtr(state->info.selfHwnd, GWL_EXSTYLE);
+        // Se eliminan los estilos extendidos de ventana independiente, topmost y bordes especiales
+        exStyle &= ~(WS_EX_APPWINDOW | WS_EX_TOPMOST | WS_EX_DLGMODALFRAME | WS_EX_CLIENTEDGE | WS_EX_STATICEDGE | WS_EX_WINDOWEDGE);
+        // Se agrega el estilo WS_EX_LAYERED para permitir transparencia en la ventana SDL
+        exStyle |= WS_EX_LAYERED;
+        // Se establece el nuevo estilo extendido de la ventana SDL
+        SetWindowLongPtr(state->info.selfHwnd, GWL_EXSTYLE, exStyle);
+
+        // Convierte ventana SDL en CHILD de ventana objetiva
+        SetParent(state->info.selfHwnd, state->info.targetHwnd);
+
+        SetLayeredWindowAttributes(state->info.selfHwnd, 0, 255, LWA_ALPHA);
+
+        // Hace que la ventana SDL sea transparente y click-through
+        SetWindowPos(
+            state->info.selfHwnd,
+            HWND_TOPMOST,
+            0,
+            0,
+            0,
+            0,
+            SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE | SWP_FRAMECHANGED
+        );
+
+        // Muestra la ventana SDL sin robar el foco de la ventana objetivo
+        ShowWindow(state->info.selfHwnd, SW_SHOWNOACTIVATE);
     }
 
     state->renderer = SDL_CreateRenderer(state->window, nullptr);
@@ -67,15 +126,11 @@ SDL_AppResult SDL_AppInit(void **appstate, int argc, char **argv) {
         return SDL_APP_FAILURE;
     }
 
-    SDL_SetRenderVSync(state->renderer, 1);
+    // SDL_SetRenderVSync(state->renderer, 1);
     SDL_SetWindowPosition(state->window, SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED);
     SDL_ShowWindow(state->window);
 
-    // Obtiene el HWND de la ventana SDL y lo almacena en el estado de la aplicación
-    state->info.selfHwnd = static_cast<HWND>(SDL_GetPointerProperty(SDL_GetWindowProperties(state->window),
-                                                                    SDL_PROP_WINDOW_WIN32_HWND_POINTER, nullptr));
 
-    state->info.targetHwnd = FindTargetWindow();
 
     state->last_time = SDL_GetTicksNS();
 
@@ -118,11 +173,7 @@ SDL_AppResult SDL_AppIterate(void *appstate) {
     UI_BuildWindows(*state);
 
     // Render
-    SDL_SetRenderDrawColorFloat(state->renderer,
-                                state->clear_color[0],
-                                state->clear_color[1],
-                                state->clear_color[2],
-                                1.0f);
+    SDL_SetRenderDrawColor(state->renderer, 15, 15, 15, 100);
     SDL_RenderClear(state->renderer);
 
     // render game/scene before imgui overlay
