@@ -14,6 +14,7 @@
 #include<mutex>
 #include <thread>
 #include <atomic>
+#include<condition_variable>
 
 struct PlayerResponse {
     int id_players = 0;
@@ -120,6 +121,10 @@ private:
     std::thread workerThread;
 
     mutable std::mutex mutex;
+
+    std::condition_variable conditionalVariable;
+    std::mutex conditionalVariableMutex;
+    std::atomic<bool> forceRefresh{false};
 
     std::vector<VideogameMechanic> mechanics;
     PlayerResponse player;

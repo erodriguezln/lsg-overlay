@@ -29,6 +29,8 @@ Network::Network(int playerId, int videogameId) : playerId(playerId),
 Network::~Network() {
     isRunning = false;
 
+    // Notifica al thread para que despierte y termine
+    conditionalVariable.notify_one();
     // Espera a que el thread termine antes de destruir el objeto
     if (workerThread.joinable()) {
         workerThread.join();
@@ -267,6 +269,11 @@ void Network::runLoop() {
         // TODO: Podria dejar esto en otro thread...
         fetchVideogameServerHealth();
 
-        std::this_thread::sleep_for(std::chrono::seconds(5));
+        std::unique_lock<std::mutex> lock(conditionalVariableMutex);
+        conditionalVariable.wait_for(lock, std::chrono::seconds(5), [this] {
+            return !isRunning.load() || forceRefresh.load();
+        });
+
+        forceRefresh.store(false);
     }
 }
