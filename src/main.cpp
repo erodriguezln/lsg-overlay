@@ -1,55 +1,13 @@
 #define SDL_MAIN_USE_CALLBACKS 1
 #include <SDL3/SDL.h>
 #include <SDL3/SDL_main.h>
+#include <string>
+#include <exception>
 
 #include "main.h"
 #include "ui.h"
 
 // TODO: Evaluar si es necesario usar algo como subclass, aun no estoy seguro si al cerrar un juego y forzar el cierre de la overlay si esta se destruye correctamente.
-
-static HWND FindTargetWindow() {
-    struct EnumData {
-        HWND foundHwnd = nullptr;
-    } data;
-
-    EnumWindows([](HWND hwnd, LPARAM lParam) -> BOOL {
-        auto *data = reinterpret_cast<EnumData *>(lParam);
-
-        if (!IsWindowVisible(hwnd)) {
-            return TRUE;
-        }
-
-        if (GetWindow(hwnd, GW_OWNER) != nullptr) {
-            return TRUE;
-        }
-
-        wchar_t title[256]{};
-        if (GetWindowTextW(hwnd, title, 256) <= 0) {
-            return TRUE;
-        }
-
-        if (wcsstr(title, L"Stardew Valley") == nullptr) {
-            return TRUE;
-        }
-
-        RECT rect{};
-        if (!GetWindowRect(hwnd, &rect)) {
-            return TRUE;
-        }
-
-        int width = rect.right - rect.left;
-        int height = rect.bottom - rect.top;
-
-        if (width < 200 || height < 200) {
-            return TRUE;
-        }
-
-        data->foundHwnd = hwnd;
-        return FALSE;
-    }, reinterpret_cast<LPARAM>(&data));
-
-    return data.foundHwnd;
-}
 
 static constexpr int WIDTH = 1280, HEIGHT = 800;
 
@@ -175,18 +133,34 @@ bool attachOverlay(AppState *state) {
 
 
 SDL_AppResult SDL_AppInit(void **appstate, int argc, char **argv) {
-    (void) argc;
-    (void) argv;
     SDL_SetAppMetadata(APP_NAME, "1.0", "com.example.sdl3-boilerplate");
+
+    if (argc < 4) {
+        SDL_Log("Error: Missing required arguments.");
+        return SDL_APP_FAILURE;
+    }
+
+    int playerId = 0;
+    HWND targetHwnd = nullptr;
+    int videogameId = 0;
+
+    try {
+        playerId = std::stoi(argv[1]);
+        unsigned long long hwndVal = std::stoull(argv[2], nullptr, 0);
+        targetHwnd = reinterpret_cast<HWND>(hwndVal);
+        videogameId = std::stoi(argv[3]);
+    } catch (const std::exception &e) {
+        SDL_Log("Error: Invalid arguments: %s", e.what());
+        SDL_Log("Usage: %s <playerId> <targetHWND> <videogameId>", argv[0]);
+        return SDL_APP_FAILURE;
+    }
 
     if (!SDL_Init(SDL_INIT_VIDEO | SDL_INIT_GAMEPAD)) {
         SDL_Log("Couldn't initialize SDL: %s", SDL_GetError());
         return SDL_APP_FAILURE;
     }
 
-    // TODO: Tengo que pasarlo de forma dinamica
-    int TEMP_PLAYER_ID = 41;
-    auto *state = new AppState(TEMP_PLAYER_ID);
+    auto *state = new AppState(playerId, videogameId);
 
     *appstate = state;
 
@@ -204,8 +178,7 @@ SDL_AppResult SDL_AppInit(void **appstate, int argc, char **argv) {
     // Obtiene el HWND de la ventana SDL y lo almacena en el estado de la aplicación
     state->info.selfHwnd = static_cast<HWND>(SDL_GetPointerProperty(SDL_GetWindowProperties(state->window),
                                                                     SDL_PROP_WINDOW_WIN32_HWND_POINTER, nullptr));
-    // TODO: Temporal, esto debera ser dinamnico...
-    state->info.targetHwnd = FindTargetWindow();
+    state->info.targetHwnd = targetHwnd;
 
     if (state->info.targetHwnd && IsWindow(state->info.targetHwnd)) {
         if (attachOverlay(state)) {

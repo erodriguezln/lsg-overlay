@@ -7,9 +7,10 @@
 #include <optional>
 #include <chrono>
 
-Network::Network(int player_id) : player_id(player_id),
-                                  client("http://127.0.0.1:3333"),
-                                  isRunning(true) {
+Network::Network(int playerId, int videogameId) : playerId(playerId),
+                                                    videogameId(videogameId),
+                                                    client("http://127.0.0.1:3333"),
+                                                    isRunning(true) {
     client.set_connection_timeout(5);
     client.set_read_timeout(10);
 
@@ -66,7 +67,8 @@ bool Network::fetchPlayer() {
 }
 
 bool Network::fetchMechanics() {
-    auto response = client.Get("/videogames/12/mechanics");
+    std::string path = "/videogames/" + std::to_string(videogameId) + "/mechanics";
+    auto response = client.Get(path);
 
     if (!response || response->status != 200) {
         std::cout << "Failed to fetch mechanics: "
@@ -132,7 +134,7 @@ bool Network::fetchPlayerAttributes() {
         target_id = player.id_players;
     }
     if (target_id == 0) {
-        target_id = player_id;
+        target_id = playerId;
     }
 
     std::string path = "/players/" + std::to_string(target_id) + "/attributes/points";

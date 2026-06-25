@@ -78,7 +78,7 @@ struct GameServerHealth {
 
 class Network {
 public:
-    Network(int player_id);
+    Network(int playerId, int videogameId);
 
     ~Network();
 
@@ -97,7 +97,9 @@ public:
     void printDebug() const;
 
 private:
-    int player_id;
+    int playerId;
+
+    int videogameId;
 
     httplib::Client client;
 

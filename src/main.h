@@ -17,8 +17,8 @@ struct AppState {
 
     Network network;
 
-    // Constructor que inicializa el objeto Network con el player_id proporcionado
-    AppState(int player_id) : network(player_id) {
+    // Constructor que inicializa el objeto Network con el player_id y videogame_id proporcionados
+    AppState(int playerId, int videogameId) : network(playerId, videogameId) {
     }
 
     Info info;
