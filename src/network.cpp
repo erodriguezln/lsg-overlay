@@ -126,11 +126,22 @@ bool Network::fetchMechanics() {
 }
 
 bool Network::fetchPlayerAttributes() {
-    std::string path = "/players/" + std::to_string(player_id) + "/attributes/points";
+    int target_id = 0;
+    {
+        std::lock_guard<std::mutex> lock(mutex);
+        target_id = player.id_players;
+    }
+    if (target_id == 0) {
+        target_id = player_id;
+    }
 
+    std::string path = "/players/" + std::to_string(target_id) + "/attributes/points";
     auto response = client.Get(path);
 
     if (!response || response->status != 200) {
+        std::cerr << "Failed to fetch player attributes: "
+                  << (response ? std::to_string(response->status) : "No response from server")
+                  << " for path: " << path << std::endl;
         return false;
     }
     try {
@@ -140,18 +151,23 @@ bool Network::fetchPlayerAttributes() {
 
         for (const auto &item_json: json) {
             PlayerAttributePointsItem item;
-            item.id_players = item_json["id_players"];
-            item.player_name = item_json["player_name"];
-            item.player_email = item_json["player_email"];
-            item.id_attributes = item_json["id_attributes"];
+            
+            // Check keys safely to prevent JSON type/key exceptions
+            item.id_players = item_json.value("id_players", 0);
+            item.player_name = item_json.value("player_name", "");
+            item.player_email = item_json.value("player_email", "");
+            item.id_attributes = item_json.value("id_attributes", 0);
+            
             if (item_json.contains("attribute_name") && !item_json["attribute_name"].is_null()) {
                 item.attribute_name = item_json["attribute_name"].get<std::string>();
             } else {
                 item.attribute_name = std::nullopt;
             }
-            item.balance_ledger = item_json["balance_ledger"];
-            item.snapshot_points = item_json["snapshot_points"];
-            item.diff_ledger_minus_snapshot = item_json["diff_ledger_minus_snapshot"];
+            
+            item.balance_ledger = item_json.value("balance_ledger", 0.0);
+            item.snapshot_points = item_json.value("snapshot_points", 0.0);
+            item.diff_ledger_minus_snapshot = item_json.value("diff_ledger_minus_snapshot", 0.0);
+            
             fetchedItem.push_back(item);
         }
 

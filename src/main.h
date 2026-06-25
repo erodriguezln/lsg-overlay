@@ -13,7 +13,7 @@ struct AppState {
     AppState(int player_id) : network(player_id) {}
 
     // Demo window toggle — press the button in the overlay to show/hide it.
-    bool show_demo_window = true;
+    bool show_demo_window = false;
     bool show_overlay = true;
 
     // Example state for the custom overlay panel.

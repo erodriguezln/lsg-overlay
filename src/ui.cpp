@@ -35,8 +35,10 @@ void UI_BeginFrame() {
 }
 
 void UI_BuildWindows(AppState &state) {
-    auto player = state.network.getPlayer();
-    auto mechanics = state.network.getMechanics();
+    const auto player = state.network.getPlayer();
+    const auto playerAttributes = state.network.getPlayerAttributePoints();
+    const auto mechanics = state.network.getMechanics();
+
     // 1. Dear ImGui demo window (toggle from the overlay panel).
     if (state.show_demo_window)
         ImGui::ShowDemoWindow(&state.show_demo_window);
@@ -56,7 +58,7 @@ void UI_BuildWindows(AppState &state) {
         if (player.name.empty()) {
             ImGui::Text("Cargando jugador...");
         } else {
-            ImGui::Text("Player: %s", player.name.c_str());
+            ImGui::TextColored(ImVec4(0.45f, 0.55f, 0.65f, 1.0f), player.name.c_str());
         }
 
         ImGui::Text("SDL3 + Dear ImGui");
@@ -78,6 +80,39 @@ void UI_BuildWindows(AppState &state) {
             }
         }
 
+
+        ImGui::End();
+
+        const ImVec2 display_size = ImGui::GetIO().DisplaySize;
+        const float scale = ImGui::GetIO().FontGlobalScale;
+
+        const float padding = 24.0f * scale;
+        const float header_h = 60.0f * scale;
+        const float bottom_h = 40.0f * scale;
+
+        const float left_panel_w = 380.0f * scale;
+        const float panels_y = padding + header_h;
+        const float panels_h = display_size.y - panels_y - padding - bottom_h;
+
+        // Attributes window
+        ImGui::SetNextWindowPos(ImVec2(padding, panels_y), ImGuiCond_Always);
+        ImGui::SetNextWindowSize(ImVec2(left_panel_w, panels_h), ImGuiCond_Always);
+
+        ImGui::Begin("Atributos", nullptr,
+                     ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove);
+
+        ImGui::TextColored(ImVec4(0.45f, 0.55f, 0.65f, 1.0f), "Balance calculado desde puntos");
+        ImGui::Spacing();
+        ImGui::Separator();
+        ImGui::Spacing();
+
+        if (playerAttributes.empty()) {
+            ImGui::Text("Cargando atributos...");
+        } else {
+            for (const auto &attr: playerAttributes) {
+                ImGui::Text("Atributo: %s", attr.attribute_name.value_or("Desconocido").c_str());
+            }
+        }
 
         ImGui::End();
     }

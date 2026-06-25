@@ -18,7 +18,7 @@ SDL_AppResult SDL_AppInit(void **appstate, int argc, char **argv) {
     }
 
     // TODO: Tengo que pasarlo de forma dinamica
-    int TEMP_PLAYER_ID = 12;
+    int TEMP_PLAYER_ID = 41;
     auto *state = new AppState(TEMP_PLAYER_ID);
 
     *appstate = state;
