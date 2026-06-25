@@ -12,6 +12,7 @@ Network::Network(int playerId, int videogameId) : playerId(playerId),
                                                   client("http://127.0.0.1:3333"),
                                                   videogameServerClient("http://localhost:7878"),
                                                   isRunning(true) {
+    // Límites de tiempo para evitar bloquear el thread si las conexiones no responden
     client.set_connection_timeout(5);
     client.set_read_timeout(10);
 
@@ -197,11 +198,30 @@ bool Network::fetchVideogameServerHealth() {
         std::cerr << "Failed to fetch videogame server health: "
                 << (response ? std::to_string(response->status) : "No response from server")
                 << std::endl;
+        // Inicialmente marca el servidor del videojuego como offline
         isVideogameServerOnline.store(false);
         return false;
     }
 
+    // Marca el servidor como online
     isVideogameServerOnline.store(true);
+    return true;
+}
+
+bool Network::postReward(int rewardId) {
+    nlohmann::json payload;
+    payload["reward_id"] = rewardId;
+
+    // Envía la mecanica elegida por POST para materializarla en el videojuego/mod
+    auto response = videogameServerClient.Post("/reward", payload.dump(), "application/json");
+
+    if (!response || response->status != 200) {
+        std::cerr << "Failed to send reward. ID: " << rewardId
+                  << ". Status: " << (response ? std::to_string(response->status) : "No response")
+                  << std::endl;
+        return false;
+    }
+
     return true;
 }
 

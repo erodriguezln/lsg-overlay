@@ -90,6 +90,8 @@ public:
 
     bool fetchVideogameServerHealth();
 
+    bool postReward(int rewardId);
+
     bool getIsVideogameServerOnline() const;
 
     PlayerResponse getPlayer() const;

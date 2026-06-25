@@ -280,7 +280,44 @@ void UI_BuildWindows(AppState &state) {
                                 ImGui::Button(dimensionStr);
                                 ImGui::PopStyleColor();
 
-                                // TODO: Agregar boton para redeem usar otra columna
+                            }
+
+                            // Columna 2: Redeem
+                            ImGui::TableNextColumn();
+
+                            ImGui::SetCursorPosY(ImGui::GetCursorPosY() + 24.0f * scale);
+
+                            // Obtiene el id de recompensa desde options "reward_id"
+                            int rewardId = -1;
+                            if (m.options.is_object() && m.options.contains("reward_id") && !m.options["reward_id"].is_null()) {
+                                rewardId = m.options["reward_id"].get<int>();
+                            }
+
+                            bool isAvailable = (pointCost != -1 && pointDimensionId != -1 && rewardId != -1);
+
+                            if (!isAvailable || !serverOnline) {
+                                // Botón deshabilitado si no está disponible o el servidor está offline
+                                ImGui::BeginDisabled();
+                                ImGui::Button("No disponible", ImVec2(-1, 35.0f * scale));
+                                ImGui::EndDisabled();
+
+                                // Tooltip indicativo para avisar si el servidor está caído
+                                if (isAvailable && !serverOnline && ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled)) {
+                                    ImGui::SetTooltip("Servidor del videojuego desconectado");
+                                }
+                            } else {
+                                // Botón "Redeem" activo
+                                ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.0f, 0.50f, 0.70f, 0.50f));
+                                ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.0f, 0.60f, 0.90f, 0.70f));
+
+                                char btnLabel[64];
+                                std::snprintf(btnLabel, sizeof(btnLabel), "Redeem##%d", m.id_modifiable_mechanic);
+
+                                if (ImGui::Button(btnLabel, ImVec2(-1, 35.0f * scale))) {
+                                    state.network.postReward(rewardId);
+                                }
+
+                                ImGui::PopStyleColor(2);
                             }
 
                             ImGui::EndTable();
