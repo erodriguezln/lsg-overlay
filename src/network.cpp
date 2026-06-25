@@ -147,8 +147,6 @@ void Network::runLoop() {
     while (isRunning) {
         fetchMechanics();
 
-        printDebug();
-
         std::this_thread::sleep_for(std::chrono::seconds(5));
     }
 }

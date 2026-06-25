@@ -35,6 +35,7 @@ void UI_BeginFrame() {
 }
 
 void UI_BuildWindows(AppState &state) {
+    auto mechanics = state.network.getMechanics();
     // 1. Dear ImGui demo window (toggle from the overlay panel).
     if (state.show_demo_window)
         ImGui::ShowDemoWindow(&state.show_demo_window);
@@ -60,6 +61,17 @@ void UI_BuildWindows(AppState &state) {
         ImGui::ColorEdit3("Clear color", state.clear_color);
         ImGui::Separator();
         ImGui::Checkbox("Show demo window", &state.show_demo_window);
+
+        ImGui::Separator();
+        if (mechanics.empty()) {
+            ImGui::Text("Cargando mecanicas...");
+        } else {
+            for (const auto &m: mechanics) {
+                ImGui::Text("Mecanica: %s", m.modifiable_mechanic_name.c_str());
+
+            }
+        }
+
 
         ImGui::End();
     }
