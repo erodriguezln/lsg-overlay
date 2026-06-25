@@ -205,13 +205,17 @@ bool Network::postReward(int rewardId) {
     nlohmann::json payload;
     payload["reward_id"] = rewardId;
 
+    httplib::Client localVideogameServerClient("http://localhost:7878");
+    localVideogameServerClient.set_connection_timeout(2);
+    localVideogameServerClient.set_read_timeout(2);
+
     // Envía la mecanica elegida por POST para materializarla en el videojuego/mod
-    auto response = videogameServerClient.Post("/reward", payload.dump(), "application/json");
+    auto response = localVideogameServerClient.Post("/reward", payload.dump(), "application/json");
 
     if (!response || response->status != 200) {
         std::cerr << "Failed to send reward. ID: " << rewardId
-                  << ". Status: " << (response ? std::to_string(response->status) : "No response")
-                  << std::endl;
+                << ". Status: " << (response ? std::to_string(response->status) : "No response")
+                << std::endl;
         return false;
     }
 
