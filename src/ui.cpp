@@ -6,6 +6,21 @@
 #include "imgui_impl_sdl3.h"
 #include "imgui_impl_sdlrenderer3.h"
 
+static void RenderAttribute(const char *name, double value, double max_val, float width) {
+    ImGui::Text("%s", name);
+
+    char valStr[32];
+    std::snprintf(valStr, sizeof(valStr), "%.2f", value);
+    float textWidth = ImGui::CalcTextSize(valStr).x;
+
+    ImGui::SameLine();
+    ImGui::SetCursorPosX(width - textWidth - 30.0f);
+    ImGui::Text("%s", valStr);
+
+    ImGui::ProgressBar(static_cast<float>(value) / static_cast<float>(max_val), ImVec2(-1, 8.0f), "");
+    ImGui::Spacing();
+}
+
 void UI_Init(SDL_Window *window, SDL_Renderer *renderer) {
     IMGUI_CHECKVERSION();
     ImGui::CreateContext();
@@ -110,7 +125,7 @@ void UI_BuildWindows(AppState &state) {
             ImGui::Text("Cargando atributos...");
         } else {
             for (const auto &attr: playerAttributes) {
-                ImGui::Text("Atributo: %s", attr.attribute_name.value_or("Desconocido").c_str());
+                RenderAttribute(attr.attribute_name->c_str(), attr.balance_ledger, 2000.0, left_panel_w);
             }
         }
 
