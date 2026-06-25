@@ -135,16 +135,7 @@ bool Network::fetchMechanics() {
 }
 
 bool Network::fetchPlayerAttributes() {
-    int target_id = 0;
-    {
-        std::lock_guard<std::mutex> lock(mutex);
-        target_id = player.id_players;
-    }
-    if (target_id == 0) {
-        target_id = playerId;
-    }
-
-    std::string path = "/players/" + std::to_string(target_id) + "/attributes/points";
+    std::string path = "/players/" + std::to_string(playerId) + "/attributes/points";
     auto response = client.Get(path);
 
     if (!response || response->status != 200) {
