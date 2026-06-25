@@ -6,6 +6,8 @@
 struct Info {
     HWND selfHwnd = nullptr;
     HWND targetHwnd = nullptr;
+    bool visible = true;
+    bool attached = false;
 };
 
 // AppState holds every object that must survive between SDL callbacks.
