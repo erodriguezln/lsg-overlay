@@ -33,7 +33,21 @@ void UI_Init(SDL_Window *window, SDL_Renderer *renderer) {
 
     constexpr float UI_SCALE = 1.5f;
     io.FontGlobalScale = UI_SCALE;
-    ImGui::GetStyle().ScaleAllSizes(UI_SCALE);
+
+    ImGuiStyle &style = ImGui::GetStyle();
+    style.ScaleAllSizes(UI_SCALE);
+
+    style.WindowRounding = 12.0f;
+    style.FrameRounding = 6.0f;
+    style.GrabRounding = 6.0f;
+    style.PopupRounding = 6.0f;
+    style.ChildRounding = 8.0f;
+    style.ScrollbarRounding = 6.0f;
+
+    style.WindowPadding = ImVec2(20.0f, 20.0f);
+    style.FramePadding = ImVec2(10.0f, 8.0f);
+    style.ItemSpacing = ImVec2(12.0f, 12.0f);
+    style.ItemInnerSpacing = ImVec2(8.0f, 8.0f);
 
     ImGui_ImplSDL3_InitForSDLRenderer(window, renderer);
     ImGui_ImplSDLRenderer3_Init(renderer);
@@ -60,43 +74,29 @@ void UI_BuildWindows(AppState &state) {
 
     // 2. Custom overlay panel (top-left corner).
     if (state.show_overlay) {
-        ImGui::SetNextWindowPos(ImVec2(10, 10), ImGuiCond_Always);
-        ImGui::SetNextWindowBgAlpha(0.75f);
-        ImGui::Begin("##overlay", &state.show_overlay,
-                     ImGuiWindowFlags_NoDecoration |
-                     ImGuiWindowFlags_AlwaysAutoResize |
-                     ImGuiWindowFlags_NoSavedSettings |
-                     ImGuiWindowFlags_NoFocusOnAppearing |
-                     ImGuiWindowFlags_NoNav |
-                     ImGuiWindowFlags_NoMove);
-
-        if (player.name.empty()) {
-            ImGui::Text("Cargando jugador...");
-        } else {
-            ImGui::TextColored(ImVec4(0.45f, 0.55f, 0.65f, 1.0f), player.name.c_str());
-        }
-
-        ImGui::Text("SDL3 + Dear ImGui");
-        ImGui::Separator();
-        ImGui::Text("Frame: %d", state.frame_count);
-        ImGui::Text("Delta Time: %f", state.delta_time);
-        ImGui::Text("FPS:   %.1f", ImGui::GetIO().Framerate);
-        ImGui::Separator();
-        ImGui::ColorEdit3("Clear color", state.clear_color);
-        ImGui::Separator();
-        ImGui::Checkbox("Show demo window", &state.show_demo_window);
-
-        ImGui::Separator();
-        if (mechanics.empty()) {
-            ImGui::Text("Cargando mecanicas...");
-        } else {
-            for (const auto &m: mechanics) {
-                ImGui::Text("Mecanica: %s", m.modifiable_mechanic_name.c_str());
-            }
-        }
-
-
-        ImGui::End();
+        // ImGui::SetNextWindowPos(ImVec2(10, 10), ImGuiCond_Always);
+        // ImGui::SetNextWindowBgAlpha(0.75f);
+        // ImGui::Begin("##overlay", &state.show_overlay,
+        //              ImGuiWindowFlags_NoDecoration |
+        //              ImGuiWindowFlags_AlwaysAutoResize |
+        //              ImGuiWindowFlags_NoSavedSettings |
+        //              ImGuiWindowFlags_NoFocusOnAppearing |
+        //              ImGuiWindowFlags_NoNav |
+        //              ImGuiWindowFlags_NoMove);
+        //
+        //
+        //
+        // ImGui::Text("SDL3 + Dear ImGui");
+        // ImGui::Separator();
+        // ImGui::Text("Frame: %d", state.frame_count);
+        // ImGui::Text("Delta Time: %f", state.delta_time);
+        // ImGui::Text("FPS:   %.1f", ImGui::GetIO().Framerate);
+        // ImGui::Separator();
+        // ImGui::ColorEdit3("Clear color", state.clear_color);
+        // ImGui::Separator();
+        // ImGui::Checkbox("Show demo window", &state.show_demo_window);
+        //
+        // ImGui::End();
 
         const ImVec2 displaySize = ImGui::GetIO().DisplaySize;
         const float scale = ImGui::GetIO().FontGlobalScale;
@@ -105,11 +105,32 @@ void UI_BuildWindows(AppState &state) {
         const float headerH = 60.0f * scale;
         const float bottomH = 40.0f * scale;
 
+        ImGui::SetNextWindowPos(ImVec2(padding, padding), ImGuiCond_Always);
+        ImGui::SetNextWindowSize(ImVec2(displaySize.x - padding * 2, headerH), ImGuiCond_Always);
+        ImGui::PushStyleColor(ImGuiCol_WindowBg, ImVec4(0, 0, 0, 0));
+        ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 0.0f);
+
+        ImGui::Begin("##header", nullptr,
+                     ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoInputs | ImGuiWindowFlags_NoSavedSettings);
+
+        // TODO Poner el juego?
+        ImGui::SetWindowFontScale(2.4f);
+        if (player.name.empty()) {
+            ImGui::Text("Cargando jugador...");
+        } else {
+            ImGui::TextColored(ImVec4(0.45f, 0.55f, 0.65f, 1.0f), player.name.c_str());
+        }
+        ImGui::SetWindowFontScale(1.0f);
+
+        ImGui::End();
+        ImGui::PopStyleVar();
+        ImGui::PopStyleColor();
+
         const float leftPanelWidth = 380.0f * scale;
         const float panelsY = padding + headerH;
         const float panelsH = displaySize.y - panelsY - padding - bottomH;
 
-        // Left Panel: Attributes window
+        // Left Panel: Atributos
         ImGui::SetNextWindowPos(ImVec2(padding, panelsY), ImGuiCond_Always);
         ImGui::SetNextWindowSize(ImVec2(leftPanelWidth, panelsH), ImGuiCond_Always);
 
