@@ -45,10 +45,6 @@ SDL_AppResult SDL_AppInit(void **appstate, int argc, char **argv) {
 
     UI_Init(state->window, state->renderer);
 
-    if (state->network.fetchPlayer()) {
-        state->network.printDebug();
-    }
-
     return SDL_APP_CONTINUE;
 }
 

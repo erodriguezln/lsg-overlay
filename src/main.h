@@ -1,7 +1,7 @@
 #pragma once
 
 #include <SDL3/SDL.h>
-#include <netowork.h>
+#include <network.h>
 
 // AppState holds every object that must survive between SDL callbacks.
 struct AppState {

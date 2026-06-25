@@ -11,6 +11,10 @@
 #include <vector>
 #include <string>
 
+#include<mutex>
+#include <thread>
+#include <atomic>
+
 struct PlayerResponse {
     int id_players;
     std::string name;
@@ -84,9 +88,7 @@ public:
 
     bool fetchPlayerAttributes();
 
-    bool initialFetch();
-
-    const std::vector<VideogameMechanic> &getMechanics() const;
+    std::vector<VideogameMechanic> getMechanics() const;
 
     const std::vector<PlayerAttributePointsItem> &getPlayerAttributePoints() const;
 
@@ -94,14 +96,20 @@ public:
 
     int player_id;
 
-    std::vector<VideogameMechanic> mechanics;
-
-    PlayerResponse player;
-
-    std::vector<PlayerAttributePointsItem> player_attribute_points;
-
 private:
     httplib::Client client;
+
+    void runLoop();
+
+    std::thread workerThread;
+
+    std::atomic<bool> isRunning{false};
+
+    mutable std::mutex mutex;
+
+    std::vector<VideogameMechanic> mechanics;
+    PlayerResponse player;
+    std::vector<PlayerAttributePointsItem> playerAttributePoints;
 };
 
 
