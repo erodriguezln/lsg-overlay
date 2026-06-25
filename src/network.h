@@ -88,22 +88,24 @@ public:
 
     bool fetchPlayerAttributes();
 
+    PlayerResponse getPlayer() const;
+
     std::vector<VideogameMechanic> getMechanics() const;
 
-    const std::vector<PlayerAttributePointsItem> &getPlayerAttributePoints() const;
+    std::vector<PlayerAttributePointsItem> getPlayerAttributePoints() const;
 
     void printDebug() const;
 
+private:
     int player_id;
 
-private:
     httplib::Client client;
 
     void runLoop();
 
-    std::thread workerThread;
-
     std::atomic<bool> isRunning{false};
+
+    std::thread workerThread;
 
     mutable std::mutex mutex;
 

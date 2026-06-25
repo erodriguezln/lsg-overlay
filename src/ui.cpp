@@ -35,6 +35,7 @@ void UI_BeginFrame() {
 }
 
 void UI_BuildWindows(AppState &state) {
+    auto player = state.network.getPlayer();
     auto mechanics = state.network.getMechanics();
     // 1. Dear ImGui demo window (toggle from the overlay panel).
     if (state.show_demo_window)
@@ -52,6 +53,12 @@ void UI_BuildWindows(AppState &state) {
                      ImGuiWindowFlags_NoNav |
                      ImGuiWindowFlags_NoMove);
 
+        if (player.name.empty()) {
+            ImGui::Text("Cargando jugador...");
+        } else {
+            ImGui::Text("Player: %s", player.name.c_str());
+        }
+
         ImGui::Text("SDL3 + Dear ImGui");
         ImGui::Separator();
         ImGui::Text("Frame: %d", state.frame_count);
@@ -68,7 +75,6 @@ void UI_BuildWindows(AppState &state) {
         } else {
             for (const auto &m: mechanics) {
                 ImGui::Text("Mecanica: %s", m.modifiable_mechanic_name.c_str());
-
             }
         }
 
