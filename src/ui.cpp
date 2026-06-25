@@ -314,7 +314,7 @@ void UI_BuildWindows(AppState &state) {
                                 std::snprintf(btnLabel, sizeof(btnLabel), "Redeem##%d", m.id_modifiable_mechanic);
 
                                 if (ImGui::Button(btnLabel, ImVec2(-1, 35.0f * scale))) {
-                                    state.network.postReward(rewardId);
+                                    state.network.redeem(m.id_modifiable_mechanic_videogame, pointDimensionId, pointCost, rewardId);
                                 }
 
                                 ImGui::PopStyleColor(2);

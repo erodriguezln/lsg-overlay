@@ -76,6 +76,26 @@ struct GameServerHealth {
     std::optional<int> status;
 };
 
+struct RedeemRequest {
+    int modifiable_mechanic_videogame_id;
+    int point_dimension_id;
+    int amount;
+    nlohmann::json metadata;
+};
+
+struct RedeemResponse {
+    std::string status;
+    int points_ledger_id;
+    std::string source_ref;
+    double current_balance;
+    double redeemed_amount;
+    double resulting_balance;
+    int game_id;
+    int player_id;
+    int point_dimension_id;
+    int modifiable_mechanic_videogame_id;
+};
+
 
 class Network {
 public:
@@ -92,6 +112,8 @@ public:
     bool fetchVideogameServerHealth();
 
     bool postReward(int rewardId);
+
+    bool redeem(int mechanicId, int pointDimensionId, int amount, int rewardId);
 
     bool getIsVideogameServerOnline() const;
 

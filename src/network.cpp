@@ -222,6 +222,51 @@ bool Network::postReward(int rewardId) {
     return true;
 }
 
+bool Network::redeem(int mechanicId, int pointDimensionId, int amount, int rewardId) {
+    nlohmann::json payload;
+    payload["modifiable_mechanic_videogame_id"] = mechanicId;
+    payload["point_dimension_id"] = pointDimensionId;
+    payload["amount"] = amount;
+    payload["metadata"] = nullptr;
+
+    std::string path = "/videogames/" + std::to_string(videogameId) + "/players/" + std::to_string(playerId) +
+                       "/redeem";
+
+    // Se usa un cliente local para evitar colisiones de socket (race conditions) con el thread secundario de fondo, ya que httplib::Client no es thread-safe.
+    // Al salir de scope se destruye automáticamente cerrando el socket.
+    httplib::Client localClient("http://127.0.0.1:3333");
+    localClient.set_connection_timeout(5);
+    localClient.set_read_timeout(10);
+
+    auto response = localClient.Post(path.c_str(), payload.dump(), "application/json");
+
+    if (!response || response->status != 200) {
+        std::cerr << "Failed to redeem mechanic. Status: " << (response
+                                                                   ? std::to_string(response->status)
+                                                                   : "No response") << std::endl;
+        return false;
+    }
+
+    try {
+        auto jsonResponse = nlohmann::json::parse(response->body);
+        std::string status = jsonResponse.value("status", "");
+        if (status == "redeemed") {
+            // Notificar recompensa externa en el videojuego/mod
+            bool rewardPosted = postReward(rewardId);
+            // Actualizar los atributos del jugador para reflejar el nuevo balance de puntos
+            forceRefresh.store(true);
+            // Notificar al thread de fondo que se ha producido un cambio que requiere actualización
+            conditionalVariable.notify_one();
+
+            return rewardPosted;
+        }
+    } catch (const std::exception &e) {
+        std::cerr << "Failed to parse redeem response: " << e.what() << std::endl;
+    }
+
+    return false;
+}
+
 PlayerResponse Network::getPlayer() const {
     std::lock_guard<std::mutex> lock(mutex);
     return player;
