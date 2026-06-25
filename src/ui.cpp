@@ -98,20 +98,20 @@ void UI_BuildWindows(AppState &state) {
 
         ImGui::End();
 
-        const ImVec2 display_size = ImGui::GetIO().DisplaySize;
+        const ImVec2 displaySize = ImGui::GetIO().DisplaySize;
         const float scale = ImGui::GetIO().FontGlobalScale;
 
         const float padding = 24.0f * scale;
-        const float header_h = 60.0f * scale;
-        const float bottom_h = 40.0f * scale;
+        const float headerH = 60.0f * scale;
+        const float bottomH = 40.0f * scale;
 
-        const float left_panel_w = 380.0f * scale;
-        const float panels_y = padding + header_h;
-        const float panels_h = display_size.y - panels_y - padding - bottom_h;
+        const float leftPanelWidth = 380.0f * scale;
+        const float panelsY = padding + headerH;
+        const float panelsH = displaySize.y - panelsY - padding - bottomH;
 
-        // Attributes window
-        ImGui::SetNextWindowPos(ImVec2(padding, panels_y), ImGuiCond_Always);
-        ImGui::SetNextWindowSize(ImVec2(left_panel_w, panels_h), ImGuiCond_Always);
+        // Left Panel: Attributes window
+        ImGui::SetNextWindowPos(ImVec2(padding, panelsY), ImGuiCond_Always);
+        ImGui::SetNextWindowSize(ImVec2(leftPanelWidth, panelsH), ImGuiCond_Always);
 
         ImGui::Begin("Atributos", nullptr,
                      ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove);
@@ -125,9 +125,132 @@ void UI_BuildWindows(AppState &state) {
             ImGui::Text("Cargando atributos...");
         } else {
             for (const auto &attr: playerAttributes) {
-                RenderAttribute(attr.attribute_name->c_str(), attr.balance_ledger, 2000.0, left_panel_w);
+                RenderAttribute(attr.attribute_name->c_str(), attr.balance_ledger, 2000.0, leftPanelWidth);
             }
         }
+
+        ImGui::End();
+
+
+        // Right Panel: Mecánicas canjeables
+        const float right_panel_x = padding * 2 + leftPanelWidth;
+        const float right_panel_w = displaySize.x - right_panel_x - padding;
+
+        ImGui::SetNextWindowPos(ImVec2(right_panel_x, panelsY), ImGuiCond_Always);
+        ImGui::SetNextWindowSize(ImVec2(right_panel_w, panelsH), ImGuiCond_Always);
+
+        ImGui::Begin("Mecánicas canjeables", nullptr,
+                     ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove);
+
+        // // Header row
+        ImGui::TextColored(ImVec4(0.45f, 0.55f, 0.65f, 1.0f), "Usa puntos para activar modificadores");
+        ImGui::SameLine();
+
+        // TODO: Agregar server status del videojuego
+
+        ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.12f, 0.18f, 0.28f, 1.00f));
+        ImGui::Text("Mecanicas totales: %d", mechanics.size());
+        ImGui::PopStyleColor();
+
+        ImGui::Spacing();
+        ImGui::Separator();
+        ImGui::Spacing();
+
+        // Child container scrolleable para cards
+        if (ImGui::BeginChild("##cards_scroller", ImVec2(0, 0), false, ImGuiWindowFlags_AlwaysUseWindowPadding)) {
+            if (mechanics.empty()) {
+                ImGui::Text("No hay mecánicas disponibles.");
+            } else {
+                for (const auto &m: mechanics) {
+                    ImGui::PushStyleVar(ImGuiStyleVar_ChildRounding, 8.0f);
+                    ImGui::PushStyleColor(ImGuiCol_ChildBg, ImVec4(0.08f, 0.12f, 0.20f, 0.40f));
+
+                    char card_id[64];
+                    std::snprintf(card_id, sizeof(card_id), "##card_%d", m.id_modifiable_mechanic);
+
+                    if (ImGui::BeginChild(card_id, ImVec2(0, 115.0f * scale), true, ImGuiWindowFlags_NoScrollbar)) {
+                        if (ImGui::BeginTable("##card_table", 2, ImGuiTableFlags_None)) {
+                            ImGui::TableSetupColumn("details", ImGuiTableColumnFlags_WidthStretch, 0.82f);
+                            ImGui::TableSetupColumn("action", ImGuiTableColumnFlags_WidthStretch, 0.18f);
+                            ImGui::TableNextRow();
+
+                            // Columna 1
+                            ImGui::TableNextColumn();
+
+                            // Name de la mecanica
+                            ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(1.0f, 1.0f, 1.0f, 1.0f));
+                            ImGui::Text("%s", m.modifiable_mechanic_name.c_str());
+                            ImGui::PopStyleColor();
+
+                            ImGui::SameLine();
+                            // TODO: Ver cuantos type de badges existen y poner un color distinto para cada uno
+                            if (m.modifiable_mechanic_type == "buff") {
+                                ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.0f, 0.30f, 0.60f, 0.25f));
+                                ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.30f, 0.70f, 1.0f, 1.0f));
+                                ImGui::Button(m.modifiable_mechanic_type->c_str());
+                                ImGui::PopStyleColor(2);
+                            } else {
+                                ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.60f, 0.30f, 0.0f, 0.25f));
+                                ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(1.0f, 0.60f, 0.30f, 1.0f));
+                                ImGui::Button(m.modifiable_mechanic_type->c_str());
+                                ImGui::PopStyleColor(2);
+                            }
+
+                            // Descripcion de la mecanica
+                            ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.60f, 0.65f, 0.75f, 1.0f));
+                            ImGui::TextWrapped("%s", m.modifiable_mechanic_description
+                                                         ? m.modifiable_mechanic_description->c_str()
+                                                         : "Sin descripción");
+                            ImGui::PopStyleColor();
+
+                            ImGui::Spacing();
+
+                            // Badges row: Costo y Dimension de la mecanica
+                            int pointCost = -1;
+                            int pointDimensionId = -1;
+                            if (m.options.is_object()) {
+                                if (m.options.contains("cost_amount")) {
+                                    pointCost = m.options["cost_amount"].get<int>();
+                                }
+                                if (m.options.contains("point_dimension_id")) {
+                                    pointDimensionId = m.options["point_dimension_id"].get<int>();
+                                }
+                            }
+
+                            if (pointCost == -1 || pointDimensionId == -1) {
+                                ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.40f, 0.20f, 0.0f, 0.20f));
+                                ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(1.0f, 0.60f, 0.30f, 1.0f));
+                                ImGui::Button("Falta point_dimension_id/cost_amount en options");
+                                ImGui::PopStyleColor(2);
+                            } else {
+                                char costStr[32];
+                                std::snprintf(costStr, sizeof(costStr), "Costo %d", pointCost);
+                                ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.12f, 0.18f, 0.28f, 0.60f));
+                                ImGui::Button(costStr);
+                                ImGui::PopStyleColor();
+
+                                ImGui::SameLine();
+                                char dimensionStr[32];
+                                std::snprintf(dimensionStr, sizeof(dimensionStr), "Dimension %d", pointDimensionId);
+                                ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.12f, 0.18f, 0.28f, 0.60f));
+                                ImGui::Button(dimensionStr);
+                                ImGui::PopStyleColor();
+
+                                // TODO: Agregar boton para redeem usar otra columna
+                            }
+
+                            ImGui::EndTable();
+                        }
+                    }
+                    ImGui::EndChild();
+
+                    ImGui::PopStyleColor();
+                    ImGui::PopStyleVar();
+                    ImGui::Spacing();
+                }
+            }
+        }
+        ImGui::EndChild();
 
         ImGui::End();
     }
