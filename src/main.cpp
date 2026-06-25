@@ -5,6 +5,8 @@
 #include "main.h"
 #include "ui.h"
 
+// TODO: Evaluar si es necesario usar algo como subclass, aun no estoy seguro si al cerrar un juego y forzar el cierre de la overlay si esta se destruye correctamente.
+
 static HWND FindTargetWindow() {
     struct EnumData {
         HWND foundHwnd = nullptr;
@@ -51,6 +53,18 @@ static HWND FindTargetWindow() {
 
 static constexpr int WIDTH = 1280, HEIGHT = 800;
 
+void setOverlayVisibility(AppState *state) {
+    if (state->info.visible) {
+        // Permite que la ventana SDL reciba eventos de entrada
+        EnableWindow(state->info.selfHwnd, TRUE);
+        // Muestra la ventana SDL sin activarla (no toma el foco)
+        ShowWindow(state->info.selfHwnd, SW_SHOWNOACTIVATE);
+    } else {
+        EnableWindow(state->info.selfHwnd, FALSE);
+        ShowWindow(state->info.selfHwnd, SW_HIDE);
+    }
+}
+
 void resizeSdlWindow(AppState *state) {
     if (!state->info.targetHwnd || !IsWindow(state->info.targetHwnd)) {
         SDL_Log("Target window not found or invalid.");
@@ -59,6 +73,25 @@ void resizeSdlWindow(AppState *state) {
 
     if (!state->info.selfHwnd || !IsWindow(state->info.selfHwnd)) {
         SDL_Log("SDL window handle is invalid.");
+        return;
+    }
+
+    if (!state->info.attached) {
+        SDL_Log("SDL window is not attached to the target window.");
+        return;
+    }
+
+    if (!state->show_overlay) {
+        SetWindowPos(
+            state->info.selfHwnd,
+            nullptr,
+            -32000,
+            -32000,
+            0,
+            0,
+            SWP_NOACTIVATE | SWP_NOOWNERZORDER | SWP_NOZORDER
+        );
+
         return;
     }
 
@@ -115,17 +148,6 @@ static bool attachSdlWindowAsChild(AppState *state) {
 
     // Se marca la ventana SDL como adjunta a la ventana objetivo
     state->info.attached = true;
-
-    // Se fuerza la actualización del marco de la ventana SDL después de modificar sus estilos
-    // SetWindowPos(
-    //     state->info.selfHwnd,
-    //     HWND_TOPMOST,
-    //     0,
-    //     0,
-    //     0,
-    //     0,
-    //     SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE | SWP_FRAMECHANGED
-    // );
 
     resizeSdlWindow(state);
 
@@ -187,9 +209,7 @@ SDL_AppResult SDL_AppInit(void **appstate, int argc, char **argv) {
 
     if (state->info.targetHwnd && IsWindow(state->info.targetHwnd)) {
         if (attachOverlay(state)) {
-            // TODO: Hacer una funcion intermedia para mostrar y ocultar
-            // Muestra la ventana SDL sin robar el foco de la ventana objetivo
-            ShowWindow(state->info.selfHwnd, SW_SHOWNOACTIVATE);
+            setOverlayVisibility(state);
             SDL_Log("Overlay attached successfully.");
         } else {
             SDL_Log("Failed to attach overlay.");
@@ -237,7 +257,23 @@ SDL_AppResult SDL_AppIterate(void *appstate) {
     state->delta_time = static_cast<float>(now - state->last_time) * 1e-9f;
     state->last_time = now;
 
+    static bool f3WasDown = false;
+    // Detecta si la tecla F3 está presionada actualmente
+    const bool f3IsDown = (GetAsyncKeyState(VK_F3) & 0x8000) != 0;
+    if (f3IsDown && !f3WasDown) {
+        state->show_overlay = !state->show_overlay;
+        setOverlayVisibility(state);
+        SDL_Log("F3 pressed: toggling overlay visibility.");
+    }
+    //
+    f3WasDown = f3IsDown;
+
     if (state->info.attached) {
+        if (!IsWindow(state->info.targetHwnd)) {
+            SDL_Log("Target window is no longer valid. Exiting overlay.");
+            return SDL_APP_SUCCESS;
+        }
+
         // TODO: Hacer que se redimensione solo si cambia el tamaño de la ventana objetivo
         resizeSdlWindow(state);
     }
