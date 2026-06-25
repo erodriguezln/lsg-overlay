@@ -8,11 +8,15 @@
 #include <chrono>
 
 Network::Network(int playerId, int videogameId) : playerId(playerId),
-                                                    videogameId(videogameId),
-                                                    client("http://127.0.0.1:3333"),
-                                                    isRunning(true) {
+                                                  videogameId(videogameId),
+                                                  client("http://127.0.0.1:3333"),
+                                                  videogameServerClient("http://localhost:7878"),
+                                                  isRunning(true) {
     client.set_connection_timeout(5);
     client.set_read_timeout(10);
+
+    videogameServerClient.set_connection_timeout(2);
+    videogameServerClient.set_read_timeout(2);
 
     // No cambia, asi que se llama solo una vez al inicio
     fetchPlayer();
@@ -142,8 +146,8 @@ bool Network::fetchPlayerAttributes() {
 
     if (!response || response->status != 200) {
         std::cerr << "Failed to fetch player attributes: "
-                  << (response ? std::to_string(response->status) : "No response from server")
-                  << " for path: " << path << std::endl;
+                << (response ? std::to_string(response->status) : "No response from server")
+                << " for path: " << path << std::endl;
         return false;
     }
     try {
@@ -153,23 +157,23 @@ bool Network::fetchPlayerAttributes() {
 
         for (const auto &item_json: json) {
             PlayerAttributePointsItem item;
-            
+
             // Check keys safely to prevent JSON type/key exceptions
             item.id_players = item_json.value("id_players", 0);
             item.player_name = item_json.value("player_name", "");
             item.player_email = item_json.value("player_email", "");
             item.id_attributes = item_json.value("id_attributes", 0);
-            
+
             if (item_json.contains("attribute_name") && !item_json["attribute_name"].is_null()) {
                 item.attribute_name = item_json["attribute_name"].get<std::string>();
             } else {
                 item.attribute_name = std::nullopt;
             }
-            
+
             item.balance_ledger = item_json.value("balance_ledger", 0.0);
             item.snapshot_points = item_json.value("snapshot_points", 0.0);
             item.diff_ledger_minus_snapshot = item_json.value("diff_ledger_minus_snapshot", 0.0);
-            
+
             fetchedItem.push_back(item);
         }
 
@@ -186,6 +190,21 @@ bool Network::fetchPlayerAttributes() {
     }
 }
 
+bool Network::fetchVideogameServerHealth() {
+    auto response = videogameServerClient.Get("/health");
+
+    if (!response || response->status != 200) {
+        std::cerr << "Failed to fetch videogame server health: "
+                << (response ? std::to_string(response->status) : "No response from server")
+                << std::endl;
+        isVideogameServerOnline.store(false);
+        return false;
+    }
+
+    isVideogameServerOnline.store(true);
+    return true;
+}
+
 PlayerResponse Network::getPlayer() const {
     std::lock_guard<std::mutex> lock(mutex);
     return player;
@@ -199,6 +218,10 @@ std::vector<VideogameMechanic> Network::getMechanics() const {
 std::vector<PlayerAttributePointsItem> Network::getPlayerAttributePoints() const {
     std::lock_guard<std::mutex> lock(mutex);
     return playerAttributePoints;
+}
+
+bool Network::getIsVideogameServerOnline() const {
+    return isVideogameServerOnline.load();
 }
 
 void Network::printDebug() const {
@@ -221,6 +244,8 @@ void Network::runLoop() {
     while (isRunning) {
         fetchMechanics();
         fetchPlayerAttributes();
+        // TODO: Podria dejar esto en otro thread...
+        fetchVideogameServerHealth();
 
         std::this_thread::sleep_for(std::chrono::seconds(5));
     }

@@ -88,6 +88,10 @@ public:
 
     bool fetchPlayerAttributes();
 
+    bool fetchVideogameServerHealth();
+
+    bool getIsVideogameServerOnline() const;
+
     PlayerResponse getPlayer() const;
 
     std::vector<VideogameMechanic> getMechanics() const;
@@ -102,6 +106,10 @@ private:
     int videogameId;
 
     httplib::Client client;
+
+    httplib::Client videogameServerClient;
+
+    std::atomic<bool> isVideogameServerOnline{false};
 
     void runLoop();
 

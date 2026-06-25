@@ -163,24 +163,38 @@ void UI_BuildWindows(AppState &state) {
 
 
         // Right Panel: Mecánicas canjeables
-        const float right_panel_x = padding * 2 + leftPanelWidth;
-        const float right_panel_w = displaySize.x - right_panel_x - padding;
+        const float rightPanelX = padding * 2 + leftPanelWidth;
+        const float rightPanelWidth = displaySize.x - rightPanelX - padding;
 
-        ImGui::SetNextWindowPos(ImVec2(right_panel_x, panelsY), ImGuiCond_Always);
-        ImGui::SetNextWindowSize(ImVec2(right_panel_w, panelsH), ImGuiCond_Always);
+        ImGui::SetNextWindowPos(ImVec2(rightPanelX, panelsY), ImGuiCond_Always);
+        ImGui::SetNextWindowSize(ImVec2(rightPanelWidth, panelsH), ImGuiCond_Always);
 
         ImGui::Begin("Mecánicas canjeables", nullptr,
                      ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove);
 
         // // Header row
-        ImGui::TextColored(ImVec4(0.45f, 0.55f, 0.65f, 1.0f), "Usa puntos para activar modificadores");
+        char leftText[64];
+        std::snprintf(leftText, sizeof(leftText), "Mecánicas totales: %zu", mechanics.size());
+        ImGui::TextColored(ImVec4(0.45f, 0.55f, 0.65f, 1.0f), "%s", leftText);
         ImGui::SameLine();
 
-        // TODO: Agregar server status del videojuego
+        // Server status
+        bool serverOnline = state.network.getIsVideogameServerOnline();
+        const char* statusText = serverOnline ? "Videogame Server Online" : "Videogame Server Offline";
+        ImVec4 statusColor = serverOnline ? ImVec4(0.0f, 1.0f, 0.5f, 1.0f) : ImVec4(1.0f, 0.3f, 0.3f, 1.0f);
+        ImU32 dotColor = serverOnline ? IM_COL32(0, 255, 128, 255) : IM_COL32(255, 64, 64, 255);
 
-        ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.12f, 0.18f, 0.28f, 1.00f));
-        ImGui::Text("Mecanicas totales: %d", mechanics.size());
-        ImGui::PopStyleColor();
+        float statusWidth = ImGui::CalcTextSize(statusText).x + 35.0f * scale;
+        ImGui::SetCursorPosX(rightPanelWidth - statusWidth);
+
+        // Draw status dot
+        ImDrawList* drawList = ImGui::GetWindowDrawList();
+        ImVec2 pos = ImGui::GetCursorScreenPos();
+        drawList->AddCircleFilled(ImVec2(pos.x + 8.0f * scale, pos.y + 8.0f * scale), 4.0f * scale, dotColor);
+        ImGui::Dummy(ImVec2(15.0f * scale, 1.0f)); 
+        ImGui::SameLine();
+
+        ImGui::TextColored(statusColor, "%s", statusText);
 
         ImGui::Spacing();
         ImGui::Separator();
