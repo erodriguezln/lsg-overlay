@@ -5,6 +5,36 @@
 #include "main.h"
 #include "ui.h"
 
+static HWND FindTargetWindow() {
+    struct EnumData {
+        HWND foundHwnd = nullptr;
+    } data;
+    EnumWindows([](HWND hwnd, LPARAM lParam) -> BOOL {
+        auto *d = reinterpret_cast<EnumData *>(lParam);
+        wchar_t title[256];
+        if (GetWindowTextW(hwnd, title, 256) > 0) {
+            if (wcsstr(title, L"Stardew Valley") != nullptr && IsWindowVisible(hwnd)) {
+                d->foundHwnd = hwnd;
+                return FALSE;
+            }
+            if (wcsstr(title, L"Pentiment") != nullptr && IsWindowVisible(hwnd)) {
+                d->foundHwnd = hwnd;
+                return FALSE;
+            }
+            if (wcsstr(title, L"Terraria") != nullptr && IsWindowVisible(hwnd)) {
+                d->foundHwnd = hwnd;
+                return FALSE;
+            }
+            if (wcsstr(title, L"Persona 5 Royal") != nullptr && IsWindowVisible(hwnd)) {
+                d->foundHwnd = hwnd;
+                return FALSE;
+            }
+        }
+        return TRUE;
+    }, reinterpret_cast<LPARAM>(&data));
+    return data.foundHwnd;
+}
+
 static constexpr int WIDTH = 1280, HEIGHT = 800;
 
 SDL_AppResult SDL_AppInit(void **appstate, int argc, char **argv) {
@@ -40,6 +70,12 @@ SDL_AppResult SDL_AppInit(void **appstate, int argc, char **argv) {
     SDL_SetRenderVSync(state->renderer, 1);
     SDL_SetWindowPosition(state->window, SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED);
     SDL_ShowWindow(state->window);
+
+    // Obtiene el HWND de la ventana SDL y lo almacena en el estado de la aplicación
+    state->info.selfHwnd = static_cast<HWND>(SDL_GetPointerProperty(SDL_GetWindowProperties(state->window),
+                                                                    SDL_PROP_WINDOW_WIN32_HWND_POINTER, nullptr));
+
+    state->info.targetHwnd = FindTargetWindow();
 
     state->last_time = SDL_GetTicksNS();
 

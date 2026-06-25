@@ -3,6 +3,11 @@
 #include <SDL3/SDL.h>
 #include <network.h>
 
+struct Info {
+    HWND selfHwnd = nullptr;
+    HWND targetHwnd = nullptr;
+};
+
 // AppState holds every object that must survive between SDL callbacks.
 struct AppState {
     SDL_Window *window = nullptr;
@@ -10,7 +15,11 @@ struct AppState {
 
     Network network;
 
-    AppState(int player_id) : network(player_id) {}
+    // Constructor que inicializa el objeto Network con el player_id proporcionado
+    AppState(int player_id) : network(player_id) {
+    }
+
+    Info info;
 
     // Demo window toggle — press the button in the overlay to show/hide it.
     bool show_demo_window = false;

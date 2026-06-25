@@ -114,11 +114,20 @@ void UI_BuildWindows(AppState &state) {
                      ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoInputs | ImGuiWindowFlags_NoSavedSettings);
 
         // TODO Poner el juego?
-        ImGui::SetWindowFontScale(2.4f);
-        if (player.name.empty()) {
-            ImGui::Text("Cargando jugador...");
-        } else {
-            ImGui::TextColored(ImVec4(0.45f, 0.55f, 0.65f, 1.0f), player.name.c_str());
+        ImGui::SetWindowFontScale(2.0f);
+        // if (player.name.empty()) {
+        //     ImGui::Text("Cargando jugador...");
+        // } else {
+        //     ImGui::TextColored(ImVec4(0.45f, 0.55f, 0.65f, 1.0f), player.name.c_str());
+        // }
+        if (state.info.selfHwnd) {
+            ImGui::SameLine();
+            ImGui::TextColored(ImVec4(0.45f, 0.55f, 0.65f, 1.0f), "(HWND: %p)", state.info.selfHwnd);
+        }
+
+        if (state.info.targetHwnd) {
+            ImGui::SameLine();
+            ImGui::TextColored(ImVec4(0.45f, 0.55f, 0.65f, 1.0f), "(Target HWND: %p)", state.info.targetHwnd);
         }
         ImGui::SetWindowFontScale(1.0f);
 
