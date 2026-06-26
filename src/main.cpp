@@ -58,8 +58,8 @@ SDL_AppResult SDL_AppInit(void **appstate, int argc, char **argv) {
 
     // Inicializa la overlay con la ventana SDL y la ventana objetivo
     if (state->overlay.init(state->window, targetHwnd)) {
-        if (state->overlay.attach()) {
-            state->overlay.resize();
+        if (state->overlay.attachToTargetWindow()) {
+            state->overlay.resizeToTargetClientArea();
             state->overlay.applyVisibility();
             SDL_Log("Overlay attached successfully.");
         }
@@ -121,13 +121,13 @@ SDL_AppResult SDL_AppIterate(void *appstate) {
     f3WasDown = f3IsDown;
 
     if (state->overlay.isAttached()) {
-        if (!state->overlay.targetWindowIsValid()) {
+        if (!state->overlay.isTargetWindowValid()) {
             SDL_Log("Target window is no longer valid. Exiting overlay.");
             return SDL_APP_SUCCESS;
         }
 
         // TODO: Hacer que se redimensione solo si cambia el tamaño de la ventana objetivo
-        state->overlay.resize();
+        state->overlay.resizeToTargetClientArea();
     }
 
     UI_BeginFrame();

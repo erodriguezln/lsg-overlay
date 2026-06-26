@@ -19,7 +19,7 @@ bool Overlay::init(SDL_Window *sdlWindow, HWND targetWindowHwnd) {
         return false;
     }
 
-    if (!targetWindowIsValid()) {
+    if (!isTargetWindowValid()) {
         SDL_Log("Target window not found or invalid.");
         return false;
     }
@@ -27,7 +27,7 @@ bool Overlay::init(SDL_Window *sdlWindow, HWND targetWindowHwnd) {
     return true;
 }
 
-bool Overlay::attach() {
+bool Overlay::attachToTargetWindow() {
     if (attached) {
         SDL_Log("Overlay is already attached.");
         return true;
@@ -46,7 +46,7 @@ bool Overlay::attach() {
     return attachSdlWindowAsChild();
 }
 
-void Overlay::resize() const {
+void Overlay::resizeToTargetClientArea() const {
     if (!targetHwnd || !IsWindow(targetHwnd)) {
         SDL_Log("Target window not found or invalid.");
         return;
@@ -116,7 +116,7 @@ bool Overlay::isVisible() const {
     return overlayVisible;
 }
 
-bool Overlay::targetWindowIsValid() const {
+bool Overlay::isTargetWindowValid() const {
     return targetHwnd && IsWindow(targetHwnd);
 }
 

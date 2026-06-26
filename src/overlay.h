@@ -9,9 +9,9 @@ class Overlay {
 public:
     bool init(SDL_Window *sdlWindow, HWND targetWindowHwnd);
 
-    bool attach();
+    bool attachToTargetWindow();
 
-    void resize() const;
+    void resizeToTargetClientArea() const;
 
     void applyVisibility() const;
 
@@ -21,7 +21,7 @@ public:
 
     bool isVisible() const;
 
-    bool targetWindowIsValid() const;
+    bool isTargetWindowValid() const;
 
 private:
     SDL_Window *window{nullptr};
