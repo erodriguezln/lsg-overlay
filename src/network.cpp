@@ -21,6 +21,7 @@ Network::Network(int playerId, int videogameId) : playerId(playerId),
 
     // No cambia, asi que se llama solo una vez al inicio
     fetchPlayer();
+    fetchVideogame();
 
     // Inicializa el thread y corre loop en segundo plano
     workerThread = std::thread(&Network::runLoop, this);
@@ -270,6 +271,96 @@ bool Network::redeem(int mechanicId, int pointDimensionId, int amount, int rewar
 PlayerResponse Network::getPlayer() const {
     std::lock_guard<std::mutex> lock(mutex);
     return player;
+}
+
+Videogame Network::getVideogame() const {
+    std::lock_guard<std::mutex> lock(mutex);
+    return videogame;
+}
+
+bool Network::fetchVideogame() {
+    std::string path = "/videogames/" + std::to_string(videogameId);
+    auto response = client.Get(path);
+
+    if (!response || response->status != 200) {
+        std::cerr << "Failed to fetch videogame info: "
+                << (response ? std::to_string(response->status) : "No response from server")
+                << std::endl;
+        return false;
+    }
+
+    try {
+        auto json = nlohmann::json::parse(response->body);
+
+        Videogame fetchedVideogame;
+
+        fetchedVideogame.id_videogame = json["id_videogame"];
+        fetchedVideogame.name = json["name"];
+
+        if (json.contains("genre") && !json["genre"].is_null()) {
+            fetchedVideogame.genre = json["genre"].get<std::string>();
+        } else {
+            fetchedVideogame.genre = std::nullopt;
+        }
+
+        if (json.contains("description") && !json["description"].is_null()) {
+            fetchedVideogame.description = json["description"].get<std::string>();
+        } else {
+            fetchedVideogame.description = std::nullopt;
+        }
+
+        if (json.contains("engine") && !json["engine"].is_null()) {
+            fetchedVideogame.engine = json["engine"].get<std::string>();
+        } else {
+            fetchedVideogame.engine = std::nullopt;
+        }
+
+        if (json.contains("developer") && !json["developer"].is_null()) {
+            fetchedVideogame.developer = json["developer"].get<std::string>();
+        } else {
+            fetchedVideogame.developer = std::nullopt;
+        }
+
+        if (json.contains("publisher") && !json["publisher"].is_null()) {
+            fetchedVideogame.publisher = json["publisher"].get<std::string>();
+        } else {
+            fetchedVideogame.publisher = std::nullopt;
+        }
+
+        if (json.contains("launch") && !json["launch"].is_null()) {
+            fetchedVideogame.launch = json["launch"].get<std::string>();
+        } else {
+            fetchedVideogame.launch = std::nullopt;
+        }
+
+        if (json.contains("version") && !json["version"].is_null()) {
+            fetchedVideogame.version = json["version"].get<std::string>();
+        } else {
+            fetchedVideogame.version = std::nullopt;
+        }
+
+        if (json.contains("type") && !json["type"].is_null()) {
+            fetchedVideogame.type = json["type"].get<std::string>();
+        } else {
+            fetchedVideogame.type = std::nullopt;
+        }
+
+        if (json.contains("executable") && !json["executable"].is_null()) {
+            fetchedVideogame.executable = json["executable"].get<std::string>();
+        } else {
+            fetchedVideogame.executable = std::nullopt;
+        }
+
+        {
+            std::lock_guard<std::mutex> lock(mutex);
+            videogame = std::move(fetchedVideogame);
+        }
+
+        return true;
+    } catch (const std::exception &e) {
+        std::cerr << "Failed to parse videogame info: " << e.what() << std::endl;
+        return false;
+    }
 }
 
 std::vector<VideogameMechanic> Network::getMechanics() const {

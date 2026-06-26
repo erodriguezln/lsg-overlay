@@ -67,6 +67,7 @@ void UI_BuildWindows(AppState &state) {
     const auto player = state.network.getPlayer();
     const auto playerAttributes = state.network.getPlayerAttributePoints();
     const auto mechanics = state.network.getMechanics();
+    const auto videogame = state.network.getVideogame();
 
     // 1. Dear ImGui demo window (toggle from the overlay panel).
     if (state.show_demo_window)
@@ -110,28 +111,50 @@ void UI_BuildWindows(AppState &state) {
         ImGui::PushStyleColor(ImGuiCol_WindowBg, ImVec4(0, 0, 0, 0));
         ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 0.0f);
 
+        // ImGui::Begin("##header", nullptr,
+        //              ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoInputs | ImGuiWindowFlags_NoSavedSettings);
+        //
+        // // TODO Poner el juego?
+        // ImGui::SetWindowFontScale(2.0f);
+        // if (state.info.selfHwnd) {
+        //     ImGui::SameLine();
+        //     ImGui::TextColored(ImVec4(0.45f, 0.55f, 0.65f, 1.0f), "(HWND: %p)", state.info.selfHwnd);
+        // }
+        //
+        // if (state.info.targetHwnd) {
+        //     ImGui::SameLine();
+        //     ImGui::TextColored(ImVec4(0.45f, 0.55f, 0.65f, 1.0f), "(Target HWND: %p)", state.info.targetHwnd);
+        // }
+        // ImGui::SetWindowFontScale(1.0f);
+        //
+        // ImGui::End();
+
+
         ImGui::Begin("##header", nullptr,
                      ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoInputs | ImGuiWindowFlags_NoSavedSettings);
 
-        // TODO Poner el juego?
-        ImGui::SetWindowFontScale(2.0f);
-        // if (player.name.empty()) {
-        //     ImGui::Text("Cargando jugador...");
-        // } else {
-        //     ImGui::TextColored(ImVec4(0.45f, 0.55f, 0.65f, 1.0f), player.name.c_str());
-        // }
-        if (state.info.selfHwnd) {
-            ImGui::SameLine();
-            ImGui::TextColored(ImVec4(0.45f, 0.55f, 0.65f, 1.0f), "(HWND: %p)", state.info.selfHwnd);
-        }
-
-        if (state.info.targetHwnd) {
-            ImGui::SameLine();
-            ImGui::TextColored(ImVec4(0.45f, 0.55f, 0.65f, 1.0f), "(Target HWND: %p)", state.info.targetHwnd);
+        ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(1.0f, 1.0f, 1.0f, 1.0f));
+        ImGui::SetWindowFontScale(1.4f);
+        if (videogame.name.empty()) {
+            ImGui::Text("Cargando juego...");
+        } else {
+            ImGui::Text("%s", videogame.name.c_str());
         }
         ImGui::SetWindowFontScale(1.0f);
+        ImGui::PopStyleColor();
+
+        if (player.name.empty()) {
+            ImGui::Text("Cargando jugador...");
+        } else {
+            ImGui::TextColored(ImVec4(0.45f, 0.55f, 0.65f, 1.0f), player.name.c_str());
+            ImGui::SameLine();
+            ImGui::TextColored(ImVec4(0.45f, 0.55f, 0.65f, 1.0f), " - ");
+            ImGui::SameLine();
+            ImGui::TextColored(ImVec4(0.45f, 0.55f, 0.65f, 1.0f), player.email.c_str());
+        }
 
         ImGui::End();
+
         ImGui::PopStyleVar();
         ImGui::PopStyleColor();
 
@@ -180,7 +203,7 @@ void UI_BuildWindows(AppState &state) {
 
         // Server status
         bool serverOnline = state.network.getIsVideogameServerOnline();
-        const char* statusText = serverOnline ? "Videogame Server Online" : "Videogame Server Offline";
+        const char *statusText = serverOnline ? "Videogame Server Online" : "Videogame Server Offline";
         ImVec4 statusColor = serverOnline ? ImVec4(0.0f, 1.0f, 0.5f, 1.0f) : ImVec4(1.0f, 0.3f, 0.3f, 1.0f);
         ImU32 dotColor = serverOnline ? IM_COL32(0, 255, 128, 255) : IM_COL32(255, 64, 64, 255);
 
@@ -188,10 +211,10 @@ void UI_BuildWindows(AppState &state) {
         ImGui::SetCursorPosX(rightPanelWidth - statusWidth);
 
         // Draw status dot
-        ImDrawList* drawList = ImGui::GetWindowDrawList();
+        ImDrawList *drawList = ImGui::GetWindowDrawList();
         ImVec2 pos = ImGui::GetCursorScreenPos();
         drawList->AddCircleFilled(ImVec2(pos.x + 8.0f * scale, pos.y + 8.0f * scale), 4.0f * scale, dotColor);
-        ImGui::Dummy(ImVec2(15.0f * scale, 1.0f)); 
+        ImGui::Dummy(ImVec2(15.0f * scale, 1.0f));
         ImGui::SameLine();
 
         ImGui::TextColored(statusColor, "%s", statusText);
@@ -279,7 +302,6 @@ void UI_BuildWindows(AppState &state) {
                                 ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.12f, 0.18f, 0.28f, 0.60f));
                                 ImGui::Button(dimensionStr);
                                 ImGui::PopStyleColor();
-
                             }
 
                             // Columna 2: Redeem
@@ -289,7 +311,8 @@ void UI_BuildWindows(AppState &state) {
 
                             // Obtiene el id de recompensa desde options "reward_id"
                             int rewardId = -1;
-                            if (m.options.is_object() && m.options.contains("reward_id") && !m.options["reward_id"].is_null()) {
+                            if (m.options.is_object() && m.options.contains("reward_id") && !m.options["reward_id"].
+                                is_null()) {
                                 rewardId = m.options["reward_id"].get<int>();
                             }
 
@@ -302,7 +325,8 @@ void UI_BuildWindows(AppState &state) {
                                 ImGui::EndDisabled();
 
                                 // Tooltip indicativo para avisar si el servidor está caído
-                                if (isAvailable && !serverOnline && ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled)) {
+                                if (isAvailable && !serverOnline && ImGui::IsItemHovered(
+                                        ImGuiHoveredFlags_AllowWhenDisabled)) {
                                     ImGui::SetTooltip("Servidor del videojuego desconectado");
                                 }
                             } else {
@@ -314,7 +338,8 @@ void UI_BuildWindows(AppState &state) {
                                 std::snprintf(btnLabel, sizeof(btnLabel), "Redeem##%d", m.id_modifiable_mechanic);
 
                                 if (ImGui::Button(btnLabel, ImVec2(-1, 35.0f * scale))) {
-                                    state.network.redeem(m.id_modifiable_mechanic_videogame, pointDimensionId, pointCost, rewardId);
+                                    state.network.redeem(m.id_modifiable_mechanic_videogame, pointDimensionId,
+                                                         pointCost, rewardId);
                                 }
 
                                 ImGui::PopStyleColor(2);

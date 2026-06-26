@@ -21,7 +21,7 @@ struct PlayerResponse {
     std::string name;
     std::string email;
     std::optional<int> age;
-    std::vector<std::string> roles; // "player", "teacher", "researcher", "admin", "developer"
+    std::vector<std::string> roles;
 };
 
 struct Videogame {
@@ -65,12 +65,6 @@ struct PlayerPointsBalanceItem {
     double balance;
 };
 
-struct WatcherActiveGame {
-    int idVideogame;
-    int pid;
-    std::optional<std::string> hwnd;
-};
-
 struct GameServerHealth {
     bool ok;
     std::optional<int> status;
@@ -111,6 +105,8 @@ public:
 
     bool fetchVideogameServerHealth();
 
+    bool fetchVideogame();
+
     bool postReward(int rewardId);
 
     bool redeem(int mechanicId, int pointDimensionId, int amount, int rewardId);
@@ -118,6 +114,8 @@ public:
     bool getIsVideogameServerOnline() const;
 
     PlayerResponse getPlayer() const;
+
+    Videogame getVideogame() const;
 
     std::vector<VideogameMechanic> getMechanics() const;
 
@@ -151,6 +149,7 @@ private:
     std::vector<VideogameMechanic> mechanics;
     PlayerResponse player;
     std::vector<PlayerAttributePointsItem> playerAttributePoints;
+    Videogame videogame;
 };
 
 
