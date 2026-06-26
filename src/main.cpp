@@ -62,11 +62,13 @@ SDL_AppResult SDL_AppInit(void **appstate, int argc, char **argv) {
             state->overlay.resizeToTargetClientArea();
             state->overlay.applyVisibility();
             SDL_Log("Overlay attached successfully.");
+        } else {
+            SDL_Log("Failed to attach overlay to target window.");
+            return SDL_APP_FAILURE;
         }
     } else {
         SDL_Log("Failed to initialize overlay.");
-        // TODO: Dejar comentado mientras debugeo, en prod debe cerrarse si no hay targetHWND
-        // return SDL_APP_FAILURE;
+        return SDL_APP_FAILURE;
     }
 
     state->renderer = SDL_CreateRenderer(state->window, nullptr);
