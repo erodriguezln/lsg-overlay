@@ -12,7 +12,7 @@ bool Overlay::init(SDL_Window *sdlWindow, HWND targetWindowHwnd) {
 
     // Obtiene el HWND de la ventana SDL y lo almacena en el estado de la aplicación
     overlayHwnd = static_cast<HWND>(SDL_GetPointerProperty(SDL_GetWindowProperties(sdlWindow),
-                                                        SDL_PROP_WINDOW_WIN32_HWND_POINTER, nullptr));
+                                                           SDL_PROP_WINDOW_WIN32_HWND_POINTER, nullptr));
 
     if (!overlayHwnd || !IsWindow(overlayHwnd)) {
         SDL_Log("SDL window handle is invalid.");
@@ -67,7 +67,10 @@ void Overlay::resizeToTargetClientArea() const {
     }
 
     RECT targetRect{};
-    GetClientRect(targetHwnd, &targetRect);
+    if (!GetClientRect(targetHwnd, &targetRect)) {
+        SDL_Log("Failed to get target window client rect. Error code: %lu", GetLastError());
+        return;
+    }
 
     const int targetWidth = targetRect.right - targetRect.left;
     const int targetHeight = targetRect.bottom - targetRect.top;
@@ -77,10 +80,13 @@ void Overlay::resizeToTargetClientArea() const {
     }
 
     // Se sincroniza el tamaño interno de la ventana SDL con el área cliente de la ventana objetivo
-    SDL_SetWindowSize(window, targetWidth, targetHeight);
+    if (!SDL_SetWindowSize(window, targetWidth, targetHeight)) {
+        SDL_Log("Failed to set SDL window size: %s", SDL_GetError());
+        return;
+    }
 
     // Se posiciona y redimensiona la ventana SDL para cubrir el área cliente de la ventana objetivo
-    SetWindowPos(
+    if (!SetWindowPos(
         overlayHwnd,
         HWND_TOP,
         0,
@@ -88,7 +94,10 @@ void Overlay::resizeToTargetClientArea() const {
         targetWidth,
         targetHeight,
         SWP_NOACTIVATE | SWP_NOOWNERZORDER | SWP_FRAMECHANGED
-    );
+    )) {
+        SDL_Log("Failed to set overlay window position and size. Error code: %lu", GetLastError());
+        return;
+    }
 }
 
 void Overlay::applyVisibility() const {
