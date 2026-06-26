@@ -1,0 +1,16 @@
+{
+  "name": "lsg-overlay",
+  "version-string": "1.0.0",
+  "dependencies": [
+    "nlohmann-json",
+    "cpp-httplib",
+    "sdl3",
+    {
+      "name": "imgui",
+      "features": [
+        "sdl3-binding",
+        "sdl3-renderer-binding"
+      ]
+    }
+  ]
+}
