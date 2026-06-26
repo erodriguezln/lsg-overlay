@@ -121,34 +121,71 @@ bool Overlay::targetWindowIsValid() const {
 }
 
 bool Overlay::attachSdlWindowAsChild() {
+    SetLastError(0);
     // Se obtiene el estilo actual de la ventana SDL
     LONG_PTR style = GetWindowLongPtr(selfHwnd, GWL_STYLE);
+    DWORD error = GetLastError();
+    if (style == 0 && error != 0) {
+        SDL_Log("Failed to get window style. Error code: %lu", error);
+        return false;
+    }
     // Se eliminan los estilos de ventana independiente y con marco
     style &= ~(WS_POPUP | WS_CAPTION | WS_THICKFRAME | WS_MINIMIZEBOX | WS_MAXIMIZEBOX | WS_SYSMENU | WS_BORDER);
     // Se agrega el estilo WS_CHILD para preparar la ventana SDL como ventana hija
     style |= WS_CHILD;
-    // Se establece el nuevo estilo de la ventana SDL
-    SetWindowLongPtr(selfHwnd, GWL_STYLE, style);
 
+    SetLastError(0);
+    // Se establece el nuevo estilo de la ventana SDL
+    const LONG_PTR previousStyle = SetWindowLongPtr(selfHwnd, GWL_STYLE, style);
+    error = GetLastError();
+    if (previousStyle == 0 && error != 0) {
+        SDL_Log("Failed to set window style. Error code: %lu", error);
+        return false;
+    }
+
+    // Se limpia el código de error antes de establecer el nuevo estilo extendido
+    SetLastError(0);
     // Se obtiene el estilo extendido actual de la ventana SDL
     LONG_PTR exStyle = GetWindowLongPtr(selfHwnd, GWL_EXSTYLE);
+    error = GetLastError();
+    if (exStyle == 0 && error != 0) {
+        SDL_Log("Failed to get extended window style. Error code: %lu", error);
+        return false;
+    }
+
     // Se eliminan los estilos extendidos de ventana independiente, topmost y bordes especiales
     exStyle &= ~(WS_EX_APPWINDOW | WS_EX_TOPMOST | WS_EX_DLGMODALFRAME | WS_EX_CLIENTEDGE | WS_EX_STATICEDGE |
                  WS_EX_WINDOWEDGE);
     // Se agrega el estilo WS_EX_LAYERED para permitir transparencia en la ventana SDL
     exStyle |= WS_EX_LAYERED;
+
+    SetLastError(0);
     // Se establece el nuevo estilo extendido de la ventana SDL
-    SetWindowLongPtr(selfHwnd, GWL_EXSTYLE, exStyle);
+    const LONG_PTR previousExStyle = SetWindowLongPtr(selfHwnd, GWL_EXSTYLE, exStyle);
+    error = GetLastError();
+    if (previousExStyle == 0 && error != 0) {
+        SDL_Log("Failed to set extended window style. Error code: %lu", error);
+        return false;
+    }
 
+    SetLastError(0);
     // Convierte ventana SDL en CHILD de ventana objetiva
-    SetParent(selfHwnd, targetHwnd);
+    HWND previousParent = SetParent(selfHwnd, targetHwnd);
+    error = GetLastError();
+    if (!previousParent && error != 0) {
+        SDL_Log("Failed to set parent window. Error code: %lu", error);
+        return false;
+    }
 
+    SetLastError(0);
     // Se configura la opacidad global de la ventana SDL como completamente opaca
-    SetLayeredWindowAttributes(selfHwnd, 0, 255, LWA_ALPHA);
+    if (!SetLayeredWindowAttributes(selfHwnd, 0, 255, LWA_ALPHA)) {
+        SDL_Log("Failed to set layered window attributes. Error code: %lu", GetLastError());
+        return false;
+    }
 
     // Se marca la ventana SDL como adjunta a la ventana objetiva
     attached = true;
-
     resize();
 
     return true;
