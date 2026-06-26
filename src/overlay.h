@@ -25,8 +25,8 @@ public:
 
 private:
     SDL_Window *window{nullptr};
-    HWND selfHwnd = nullptr;
-    HWND targetHwnd = nullptr;
+    HWND overlayHwnd{nullptr};
+    HWND targetHwnd{nullptr};
     bool attached{false};
     bool overlayVisible{true};
 

@@ -11,10 +11,10 @@ bool Overlay::init(SDL_Window *sdlWindow, HWND targetWindowHwnd) {
     targetHwnd = targetWindowHwnd;
 
     // Obtiene el HWND de la ventana SDL y lo almacena en el estado de la aplicación
-    selfHwnd = static_cast<HWND>(SDL_GetPointerProperty(SDL_GetWindowProperties(sdlWindow),
+    overlayHwnd = static_cast<HWND>(SDL_GetPointerProperty(SDL_GetWindowProperties(sdlWindow),
                                                         SDL_PROP_WINDOW_WIN32_HWND_POINTER, nullptr));
 
-    if (!selfHwnd || !IsWindow(selfHwnd)) {
+    if (!overlayHwnd || !IsWindow(overlayHwnd)) {
         SDL_Log("SDL window handle is invalid.");
         return false;
     }
@@ -38,7 +38,7 @@ bool Overlay::attachToTargetWindow() {
         return false;
     }
 
-    if (!selfHwnd || !IsWindow(selfHwnd)) {
+    if (!overlayHwnd || !IsWindow(overlayHwnd)) {
         SDL_Log("SDL window handle is invalid.");
         return false;
     }
@@ -52,7 +52,7 @@ void Overlay::resizeToTargetClientArea() const {
         return;
     }
 
-    if (!selfHwnd || !IsWindow(selfHwnd)) {
+    if (!overlayHwnd || !IsWindow(overlayHwnd)) {
         SDL_Log("SDL window handle is invalid.");
         return;
     }
@@ -81,7 +81,7 @@ void Overlay::resizeToTargetClientArea() const {
 
     // Se posiciona y redimensiona la ventana SDL para cubrir el área cliente de la ventana objetivo
     SetWindowPos(
-        selfHwnd,
+        overlayHwnd,
         HWND_TOP,
         0,
         0,
@@ -94,12 +94,12 @@ void Overlay::resizeToTargetClientArea() const {
 void Overlay::applyVisibility() const {
     if (overlayVisible) {
         // Permite que la ventana SDL reciba eventos de entrada
-        EnableWindow(selfHwnd, TRUE);
+        EnableWindow(overlayHwnd, TRUE);
         // Muestra la ventana SDL sin activarla (no toma el foco)
-        ShowWindow(selfHwnd, SW_SHOWNOACTIVATE);
+        ShowWindow(overlayHwnd, SW_SHOWNOACTIVATE);
     } else {
-        EnableWindow(selfHwnd, FALSE);
-        ShowWindow(selfHwnd, SW_HIDE);
+        EnableWindow(overlayHwnd, FALSE);
+        ShowWindow(overlayHwnd, SW_HIDE);
     }
 }
 
@@ -123,7 +123,7 @@ bool Overlay::isTargetWindowValid() const {
 bool Overlay::attachSdlWindowAsChild() {
     SetLastError(0);
     // Se obtiene el estilo actual de la ventana SDL
-    LONG_PTR style = GetWindowLongPtr(selfHwnd, GWL_STYLE);
+    LONG_PTR style = GetWindowLongPtr(overlayHwnd, GWL_STYLE);
     DWORD error = GetLastError();
     if (style == 0 && error != 0) {
         SDL_Log("Failed to get window style. Error code: %lu", error);
@@ -136,7 +136,7 @@ bool Overlay::attachSdlWindowAsChild() {
 
     SetLastError(0);
     // Se establece el nuevo estilo de la ventana SDL
-    const LONG_PTR previousStyle = SetWindowLongPtr(selfHwnd, GWL_STYLE, style);
+    const LONG_PTR previousStyle = SetWindowLongPtr(overlayHwnd, GWL_STYLE, style);
     error = GetLastError();
     if (previousStyle == 0 && error != 0) {
         SDL_Log("Failed to set window style. Error code: %lu", error);
@@ -146,7 +146,7 @@ bool Overlay::attachSdlWindowAsChild() {
     // Se limpia el código de error antes de establecer el nuevo estilo extendido
     SetLastError(0);
     // Se obtiene el estilo extendido actual de la ventana SDL
-    LONG_PTR exStyle = GetWindowLongPtr(selfHwnd, GWL_EXSTYLE);
+    LONG_PTR exStyle = GetWindowLongPtr(overlayHwnd, GWL_EXSTYLE);
     error = GetLastError();
     if (exStyle == 0 && error != 0) {
         SDL_Log("Failed to get extended window style. Error code: %lu", error);
@@ -161,7 +161,7 @@ bool Overlay::attachSdlWindowAsChild() {
 
     SetLastError(0);
     // Se establece el nuevo estilo extendido de la ventana SDL
-    const LONG_PTR previousExStyle = SetWindowLongPtr(selfHwnd, GWL_EXSTYLE, exStyle);
+    const LONG_PTR previousExStyle = SetWindowLongPtr(overlayHwnd, GWL_EXSTYLE, exStyle);
     error = GetLastError();
     if (previousExStyle == 0 && error != 0) {
         SDL_Log("Failed to set extended window style. Error code: %lu", error);
@@ -170,7 +170,7 @@ bool Overlay::attachSdlWindowAsChild() {
 
     SetLastError(0);
     // Convierte ventana SDL en CHILD de ventana objetiva
-    HWND previousParent = SetParent(selfHwnd, targetHwnd);
+    HWND previousParent = SetParent(overlayHwnd, targetHwnd);
     error = GetLastError();
     if (!previousParent && error != 0) {
         SDL_Log("Failed to set parent window. Error code: %lu", error);
@@ -179,7 +179,7 @@ bool Overlay::attachSdlWindowAsChild() {
 
     SetLastError(0);
     // Se configura la opacidad global de la ventana SDL como completamente opaca
-    if (!SetLayeredWindowAttributes(selfHwnd, 0, 255, LWA_ALPHA)) {
+    if (!SetLayeredWindowAttributes(overlayHwnd, 0, 255, LWA_ALPHA)) {
         SDL_Log("Failed to set layered window attributes. Error code: %lu", GetLastError());
         return false;
     }
