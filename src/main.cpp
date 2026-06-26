@@ -59,6 +59,7 @@ SDL_AppResult SDL_AppInit(void **appstate, int argc, char **argv) {
     // Inicializa la overlay con la ventana SDL y la ventana objetivo
     if (state->overlay.init(state->window, targetHwnd)) {
         if (state->overlay.attach()) {
+            state->overlay.resize();
             state->overlay.applyVisibility();
             SDL_Log("Overlay attached successfully.");
         }

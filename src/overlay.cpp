@@ -186,7 +186,6 @@ bool Overlay::attachSdlWindowAsChild() {
 
     // Se marca la ventana SDL como adjunta a la ventana objetiva
     attached = true;
-    resize();
 
     return true;
 }
