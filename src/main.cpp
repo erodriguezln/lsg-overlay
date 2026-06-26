@@ -78,8 +78,8 @@ SDL_AppResult SDL_AppInit(void **appstate, int argc, char **argv) {
     }
 
     // SDL_SetRenderVSync(state->renderer, 1);
-    SDL_SetWindowPosition(state->window, SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED);
-    SDL_ShowWindow(state->window);
+    // SDL_SetWindowPosition(state->window, SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED);
+    // SDL_ShowWindow(state->window);
 
     state->last_time = SDL_GetTicksNS();
 
@@ -128,7 +128,6 @@ SDL_AppResult SDL_AppIterate(void *appstate) {
             return SDL_APP_SUCCESS;
         }
 
-        // TODO: Hacer que se redimensione solo si cambia el tamaño de la ventana objetivo
         state->overlay.resizeToTargetClientArea();
     }
 

@@ -46,7 +46,7 @@ bool Overlay::attachToTargetWindow() {
     return attachSdlWindowAsChild();
 }
 
-void Overlay::resizeToTargetClientArea() const {
+void Overlay::resizeToTargetClientArea() {
     if (!targetHwnd || !IsWindow(targetHwnd)) {
         SDL_Log("Target window not found or invalid.");
         return;
@@ -79,6 +79,12 @@ void Overlay::resizeToTargetClientArea() const {
         return;
     }
 
+    // No hay cambios en el tamaño de la ventana objetivo, no es necesario redimensionar
+    if (targetWidth == lastTargetWidth && targetHeight == lastTargetHeight) {
+        return;
+    }
+
+
     // Se sincroniza el tamaño interno de la ventana SDL con el área cliente de la ventana objetivo
     if (!SDL_SetWindowSize(window, targetWidth, targetHeight)) {
         SDL_Log("Failed to set SDL window size: %s", SDL_GetError());
@@ -98,6 +104,10 @@ void Overlay::resizeToTargetClientArea() const {
         SDL_Log("Failed to set overlay window position and size. Error code: %lu", GetLastError());
         return;
     }
+
+    // Actualiza el tamaño de la ventana objetivo para la próxima verificación
+    lastTargetWidth = targetWidth;
+    lastTargetHeight = targetHeight;
 }
 
 void Overlay::applyVisibility() const {

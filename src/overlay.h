@@ -4,14 +4,13 @@
 
 struct SDL_Window;
 
-
 class Overlay {
 public:
     bool init(SDL_Window *sdlWindow, HWND targetWindowHwnd);
 
     bool attachToTargetWindow();
 
-    void resizeToTargetClientArea() const;
+    void resizeToTargetClientArea();
 
     void applyVisibility() const;
 
@@ -29,6 +28,9 @@ private:
     HWND targetHwnd{nullptr};
     bool attached{false};
     bool overlayVisible{true};
+
+    int lastTargetWidth{0};
+    int lastTargetHeight{0};
 
     bool attachSdlWindowAsChild();
 };
