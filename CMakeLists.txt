@@ -141,6 +141,7 @@ set(SOURCES
         src/main.cpp
         src/ui.cpp
         src/network.cpp
+        src/overlay.cpp
 )
 
 add_executable(${PROJECT_NAME} ${SOURCES})

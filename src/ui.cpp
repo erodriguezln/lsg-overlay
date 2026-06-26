@@ -74,31 +74,7 @@ void UI_BuildWindows(AppState &state) {
         ImGui::ShowDemoWindow(&state.show_demo_window);
 
     // 2. Custom overlay panel (top-left corner).
-    if (state.show_overlay) {
-        // ImGui::SetNextWindowPos(ImVec2(10, 10), ImGuiCond_Always);
-        // ImGui::SetNextWindowBgAlpha(0.75f);
-        // ImGui::Begin("##overlay", &state.show_overlay,
-        //              ImGuiWindowFlags_NoDecoration |
-        //              ImGuiWindowFlags_AlwaysAutoResize |
-        //              ImGuiWindowFlags_NoSavedSettings |
-        //              ImGuiWindowFlags_NoFocusOnAppearing |
-        //              ImGuiWindowFlags_NoNav |
-        //              ImGuiWindowFlags_NoMove);
-        //
-        //
-        //
-        // ImGui::Text("SDL3 + Dear ImGui");
-        // ImGui::Separator();
-        // ImGui::Text("Frame: %d", state.frame_count);
-        // ImGui::Text("Delta Time: %f", state.delta_time);
-        // ImGui::Text("FPS:   %.1f", ImGui::GetIO().Framerate);
-        // ImGui::Separator();
-        // ImGui::ColorEdit3("Clear color", state.clear_color);
-        // ImGui::Separator();
-        // ImGui::Checkbox("Show demo window", &state.show_demo_window);
-        //
-        // ImGui::End();
-
+    if (state.overlay.isVisible()) {
         const ImVec2 displaySize = ImGui::GetIO().DisplaySize;
         const float scale = ImGui::GetIO().FontGlobalScale;
 
@@ -110,24 +86,6 @@ void UI_BuildWindows(AppState &state) {
         ImGui::SetNextWindowSize(ImVec2(displaySize.x - padding * 2, headerH), ImGuiCond_Always);
         ImGui::PushStyleColor(ImGuiCol_WindowBg, ImVec4(0, 0, 0, 0));
         ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 0.0f);
-
-        // ImGui::Begin("##header", nullptr,
-        //              ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoInputs | ImGuiWindowFlags_NoSavedSettings);
-        //
-        // // TODO Poner el juego?
-        // ImGui::SetWindowFontScale(2.0f);
-        // if (state.info.selfHwnd) {
-        //     ImGui::SameLine();
-        //     ImGui::TextColored(ImVec4(0.45f, 0.55f, 0.65f, 1.0f), "(HWND: %p)", state.info.selfHwnd);
-        // }
-        //
-        // if (state.info.targetHwnd) {
-        //     ImGui::SameLine();
-        //     ImGui::TextColored(ImVec4(0.45f, 0.55f, 0.65f, 1.0f), "(Target HWND: %p)", state.info.targetHwnd);
-        // }
-        // ImGui::SetWindowFontScale(1.0f);
-        //
-        // ImGui::End();
 
 
         ImGui::Begin("##header", nullptr,

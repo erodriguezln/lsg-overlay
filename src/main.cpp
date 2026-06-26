@@ -11,116 +11,6 @@
 
 static constexpr int WIDTH = 1280, HEIGHT = 800;
 
-void setOverlayVisibility(AppState *state) {
-    if (state->show_overlay) {
-        // Permite que la ventana SDL reciba eventos de entrada
-        EnableWindow(state->info.selfHwnd, TRUE);
-        // Muestra la ventana SDL sin activarla (no toma el foco)
-        ShowWindow(state->info.selfHwnd, SW_SHOWNOACTIVATE);
-    } else {
-        EnableWindow(state->info.selfHwnd, FALSE);
-        ShowWindow(state->info.selfHwnd, SW_HIDE);
-    }
-}
-
-void resizeSdlWindow(AppState *state) {
-    if (!state->info.targetHwnd || !IsWindow(state->info.targetHwnd)) {
-        SDL_Log("Target window not found or invalid.");
-        return;
-    }
-
-    if (!state->info.selfHwnd || !IsWindow(state->info.selfHwnd)) {
-        SDL_Log("SDL window handle is invalid.");
-        return;
-    }
-
-    if (!state->info.attached) {
-        SDL_Log("SDL window is not attached to the target window.");
-        return;
-    }
-
-    if (!state->show_overlay) {
-        return;
-    }
-
-    RECT targetRect{};
-    GetClientRect(state->info.targetHwnd, &targetRect);
-
-    const int targetWidth = targetRect.right - targetRect.left;
-    const int targetHeight = targetRect.bottom - targetRect.top;
-    if (targetWidth <= 0 || targetHeight <= 0) {
-        SDL_Log("Target window has invalid dimensions.");
-        return;
-    }
-
-    // Se sincroniza el tamaño interno de la ventana SDL con el área cliente de la ventana objetivo
-    SDL_SetWindowSize(state->window, targetWidth, targetHeight);
-
-    // Se posiciona y redimensiona la ventana SDL para cubrir el área cliente de la ventana objetivo
-    SetWindowPos(
-        state->info.selfHwnd,
-        HWND_TOP,
-        0,
-        0,
-        targetWidth,
-        targetHeight,
-        SWP_NOACTIVATE | SWP_NOOWNERZORDER | SWP_FRAMECHANGED
-    );
-}
-
-static bool attachSdlWindowAsChild(AppState *state) {
-    // Se obtiene el estilo actual de la ventana SDL
-    LONG_PTR style = GetWindowLongPtr(state->info.selfHwnd, GWL_STYLE);
-    // Se eliminan los estilos de ventana independiente y con marco
-    style &= ~(WS_POPUP | WS_CAPTION | WS_THICKFRAME | WS_MINIMIZEBOX | WS_MAXIMIZEBOX | WS_SYSMENU | WS_BORDER);
-    // Se agrega el estilo WS_CHILD para preparar la ventana SDL como ventana hija
-    style |= WS_CHILD;
-    // Se establece el nuevo estilo de la ventana SDL
-    SetWindowLongPtr(state->info.selfHwnd, GWL_STYLE, style);
-
-    // Se obtiene el estilo extendido actual de la ventana SDL
-    LONG_PTR exStyle = GetWindowLongPtr(state->info.selfHwnd, GWL_EXSTYLE);
-    // Se eliminan los estilos extendidos de ventana independiente, topmost y bordes especiales
-    exStyle &= ~(WS_EX_APPWINDOW | WS_EX_TOPMOST | WS_EX_DLGMODALFRAME | WS_EX_CLIENTEDGE | WS_EX_STATICEDGE |
-                 WS_EX_WINDOWEDGE);
-    // Se agrega el estilo WS_EX_LAYERED para permitir transparencia en la ventana SDL
-    exStyle |= WS_EX_LAYERED;
-    // Se establece el nuevo estilo extendido de la ventana SDL
-    SetWindowLongPtr(state->info.selfHwnd, GWL_EXSTYLE, exStyle);
-
-    // Convierte ventana SDL en CHILD de ventana objetiva
-    SetParent(state->info.selfHwnd, state->info.targetHwnd);
-
-    // Se configura la opacidad global de la ventana SDL como completamente opaca
-    SetLayeredWindowAttributes(state->info.selfHwnd, 0, 255, LWA_ALPHA);
-
-    // Se marca la ventana SDL como adjunta a la ventana objetivo
-    state->info.attached = true;
-
-    resizeSdlWindow(state);
-
-    return true;
-}
-
-bool attachOverlay(AppState *state) {
-    if (state->info.attached) {
-        SDL_Log("Overlay is already attached.");
-        return true;
-    }
-
-    if (!state->info.targetHwnd || !IsWindow(state->info.targetHwnd)) {
-        SDL_Log("Target window not found or invalid.");
-        return false;
-    }
-
-    if (!state->info.selfHwnd || !IsWindow(state->info.selfHwnd)) {
-        SDL_Log("SDL window handle is invalid.");
-        return false;
-    }
-
-    return attachSdlWindowAsChild(state);
-}
-
 
 SDL_AppResult SDL_AppInit(void **appstate, int argc, char **argv) {
     SDL_SetAppMetadata(APP_NAME, "1.0", "com.example.sdl3-boilerplate");
@@ -165,18 +55,17 @@ SDL_AppResult SDL_AppInit(void **appstate, int argc, char **argv) {
         return SDL_APP_FAILURE;
     }
 
-    // Obtiene el HWND de la ventana SDL y lo almacena en el estado de la aplicación
-    state->info.selfHwnd = static_cast<HWND>(SDL_GetPointerProperty(SDL_GetWindowProperties(state->window),
-                                                                    SDL_PROP_WINDOW_WIN32_HWND_POINTER, nullptr));
-    state->info.targetHwnd = targetHwnd;
 
-    if (state->info.targetHwnd && IsWindow(state->info.targetHwnd)) {
-        if (attachOverlay(state)) {
-            setOverlayVisibility(state);
+    // Inicializa la overlay con la ventana SDL y la ventana objetivo
+    if (state->overlay.init(state->window, targetHwnd)) {
+        if (state->overlay.attach()) {
+            state->overlay.applyVisibility();
             SDL_Log("Overlay attached successfully.");
-        } else {
-            SDL_Log("Failed to attach overlay.");
         }
+    } else {
+        SDL_Log("Failed to initialize overlay.");
+        // TODO: Dejar comentado mientras debugeo, en prod debe cerrarse si no hay targetHWND
+        // return SDL_APP_FAILURE;
     }
 
     state->renderer = SDL_CreateRenderer(state->window, nullptr);
@@ -224,21 +113,20 @@ SDL_AppResult SDL_AppIterate(void *appstate) {
     // Detecta si la tecla F3 está presionada actualmente
     const bool f3IsDown = (GetAsyncKeyState(VK_F3) & 0x8000) != 0;
     if (f3IsDown && !f3WasDown) {
-        state->show_overlay = !state->show_overlay;
-        setOverlayVisibility(state);
+        state->overlay.toggleVisibility();
         SDL_Log("F3 pressed: toggling overlay visibility.");
     }
     //
     f3WasDown = f3IsDown;
 
-    if (state->info.attached) {
-        if (!IsWindow(state->info.targetHwnd)) {
+    if (state->overlay.isAttached()) {
+        if (!state->overlay.targetWindowIsValid()) {
             SDL_Log("Target window is no longer valid. Exiting overlay.");
             return SDL_APP_SUCCESS;
         }
 
         // TODO: Hacer que se redimensione solo si cambia el tamaño de la ventana objetivo
-        resizeSdlWindow(state);
+        state->overlay.resize();
     }
 
     UI_BeginFrame();
