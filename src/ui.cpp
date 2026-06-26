@@ -49,6 +49,46 @@ void UI_Init(SDL_Window *window, SDL_Renderer *renderer) {
     style.ItemSpacing = ImVec2(12.0f, 12.0f);
     style.ItemInnerSpacing = ImVec2(8.0f, 8.0f);
 
+    // Colores custom
+    ImVec4* colors = style.Colors;
+    colors[ImGuiCol_WindowBg]             = ImVec4(0.06f, 0.08f, 0.12f, 0.85f);
+    colors[ImGuiCol_ChildBg]              = ImVec4(0.08f, 0.11f, 0.18f, 0.70f);
+    colors[ImGuiCol_PopupBg]              = ImVec4(0.08f, 0.11f, 0.18f, 0.95f);
+    colors[ImGuiCol_Border]               = ImVec4(0.12f, 0.20f, 0.35f, 0.60f);
+    colors[ImGuiCol_BorderShadow]         = ImVec4(0.00f, 0.00f, 0.00f, 0.00f);
+    colors[ImGuiCol_FrameBg]              = ImVec4(0.10f, 0.14f, 0.22f, 1.00f);
+    colors[ImGuiCol_FrameBgHovered]       = ImVec4(0.15f, 0.20f, 0.30f, 1.00f);
+    colors[ImGuiCol_FrameBgActive]        = ImVec4(0.18f, 0.25f, 0.38f, 1.00f);
+    colors[ImGuiCol_TitleBg]              = ImVec4(0.08f, 0.11f, 0.18f, 1.00f);
+    colors[ImGuiCol_TitleBgActive]        = ImVec4(0.12f, 0.18f, 0.28f, 1.00f);
+    colors[ImGuiCol_TitleBgCollapsed]     = ImVec4(0.08f, 0.11f, 0.18f, 0.50f);
+    colors[ImGuiCol_MenuBarBg]            = ImVec4(0.08f, 0.11f, 0.18f, 1.00f);
+    colors[ImGuiCol_ScrollbarBg]          = ImVec4(0.08f, 0.11f, 0.18f, 0.30f);
+    colors[ImGuiCol_ScrollbarGrab]        = ImVec4(0.15f, 0.22f, 0.35f, 0.80f);
+    colors[ImGuiCol_ScrollbarGrabHovered] = ImVec4(0.20f, 0.30f, 0.45f, 0.80f);
+    colors[ImGuiCol_ScrollbarGrabActive]  = ImVec4(0.25f, 0.38f, 0.55f, 0.80f);
+    colors[ImGuiCol_CheckMark]            = ImVec4(0.00f, 0.70f, 1.00f, 1.00f);
+    colors[ImGuiCol_SliderGrab]           = ImVec4(0.00f, 0.70f, 1.00f, 0.80f);
+    colors[ImGuiCol_SliderGrabActive]     = ImVec4(0.00f, 0.70f, 1.00f, 1.00f);
+    colors[ImGuiCol_Button]               = ImVec4(0.00f, 0.45f, 0.70f, 0.40f);
+    colors[ImGuiCol_ButtonHovered]        = ImVec4(0.00f, 0.55f, 0.85f, 0.60f);
+    colors[ImGuiCol_ButtonActive]         = ImVec4(0.00f, 0.70f, 1.00f, 0.80f);
+    colors[ImGuiCol_Header]               = ImVec4(0.12f, 0.18f, 0.28f, 1.00f);
+    colors[ImGuiCol_HeaderHovered]        = ImVec4(0.15f, 0.25f, 0.40f, 1.00f);
+    colors[ImGuiCol_HeaderActive]         = ImVec4(0.20f, 0.30f, 0.50f, 1.00f);
+    colors[ImGuiCol_Separator]            = ImVec4(0.12f, 0.20f, 0.35f, 0.60f);
+    colors[ImGuiCol_SeparatorHovered]     = ImVec4(0.15f, 0.25f, 0.45f, 0.80f);
+    colors[ImGuiCol_SeparatorActive]      = ImVec4(0.20f, 0.35f, 0.55f, 1.00f);
+    colors[ImGuiCol_ResizeGrip]           = ImVec4(0.12f, 0.18f, 0.28f, 0.20f);
+    colors[ImGuiCol_ResizeGripHovered]    = ImVec4(0.15f, 0.25f, 0.40f, 0.60f);
+    colors[ImGuiCol_ResizeGripActive]     = ImVec4(0.20f, 0.30f, 0.50f, 0.90f);
+    colors[ImGuiCol_PlotLines]            = ImVec4(0.00f, 0.70f, 1.00f, 1.00f);
+    colors[ImGuiCol_PlotLinesHovered]     = ImVec4(0.00f, 0.80f, 1.00f, 1.00f);
+    colors[ImGuiCol_PlotHistogram]        = ImVec4(0.00f, 0.65f, 0.95f, 1.00f); // Glowing cyan fill
+    colors[ImGuiCol_PlotHistogramHovered] = ImVec4(0.00f, 0.80f, 1.00f, 1.00f);
+    colors[ImGuiCol_Text]                 = ImVec4(0.85f, 0.88f, 0.94f, 1.00f);
+    colors[ImGuiCol_TextDisabled]         = ImVec4(0.45f, 0.50f, 0.60f, 1.00f);
+
     ImGui_ImplSDL3_InitForSDLRenderer(window, renderer);
     ImGui_ImplSDLRenderer3_Init(renderer);
 }
@@ -182,7 +222,7 @@ void UI_BuildWindows(AppState &state) {
         ImGui::Spacing();
 
         // Child container scrolleable para cards
-        if (ImGui::BeginChild("##cards_scroller", ImVec2(0, 0), false, ImGuiWindowFlags_AlwaysUseWindowPadding)) {
+        if (ImGui::BeginChild("##cards_scroller", ImVec2(0, 0), ImGuiChildFlags_AlwaysUseWindowPadding)) {
             if (mechanics.empty()) {
                 ImGui::Text("No hay mecánicas disponibles.");
             } else {
@@ -193,7 +233,8 @@ void UI_BuildWindows(AppState &state) {
                     char card_id[64];
                     std::snprintf(card_id, sizeof(card_id), "##card_%d", m.id_modifiable_mechanic);
 
-                    if (ImGui::BeginChild(card_id, ImVec2(0, 115.0f * scale), true, ImGuiWindowFlags_NoScrollbar)) {
+                    if (ImGui::BeginChild(card_id, ImVec2(0, 125.0f * scale), ImGuiChildFlags_Borders,
+                                          ImGuiWindowFlags_NoScrollWithMouse)) {
                         if (ImGui::BeginTable("##card_table", 2, ImGuiTableFlags_None)) {
                             ImGui::TableSetupColumn("details", ImGuiTableColumnFlags_WidthStretch, 0.82f);
                             ImGui::TableSetupColumn("action", ImGuiTableColumnFlags_WidthStretch, 0.18f);
