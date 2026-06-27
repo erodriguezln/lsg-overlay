@@ -82,8 +82,6 @@ SDL_AppResult SDL_AppInit(void **appstate, int argc, char **argv) {
     // SDL_SetWindowPosition(state->window, SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED);
     // SDL_ShowWindow(state->window);
 
-    state->last_time = SDL_GetTicksNS();
-
     UI_Init(state->window, state->renderer);
 
     return SDL_APP_CONTINUE;
@@ -107,11 +105,6 @@ SDL_AppResult SDL_AppEvent(void *appstate, SDL_Event *event) {
 // Called once per frame: update game logic + render everything.
 SDL_AppResult SDL_AppIterate(void *appstate) {
     auto *state = static_cast<AppState *>(appstate);
-    state->frame_count++;
-
-    const Uint64 now = SDL_GetTicksNS();
-    state->delta_time = static_cast<float>(now - state->last_time) * 1e-9f;
-    state->last_time = now;
 
     // TODO: Podria encapsular esto
     static bool f3WasDown = false;

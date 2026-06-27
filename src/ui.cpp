@@ -109,11 +109,6 @@ void UI_BuildWindows(AppState &state) {
     const auto mechanics = state.network.getMechanics();
     const auto videogame = state.network.getVideogame();
 
-    // 1. Dear ImGui demo window (toggle from the overlay panel).
-    if (state.show_demo_window)
-        ImGui::ShowDemoWindow(&state.show_demo_window);
-
-    // 2. Custom overlay panel (top-left corner).
     if (state.overlay.isVisible()) {
         const ImVec2 displaySize = ImGui::GetIO().DisplaySize;
         const float scale = ImGui::GetIO().FontGlobalScale;

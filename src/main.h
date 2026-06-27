@@ -18,13 +18,4 @@ struct AppState {
     AppState(int playerId, int videogameId) : network(playerId, videogameId) {
     }
 
-    // Demo window toggle — press the button in the overlay to show/hide it.
-    bool show_demo_window = false;
-
-    // Example state for the custom overlay panel.
-    float clear_color[3] = {0.117f, 0.117f, 0.157f}; // matches the original dark bg
-    int frame_count = 0;
-
-    Uint64 last_time = 0;
-    float delta_time = 0.0f;
 };
