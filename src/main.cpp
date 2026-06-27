@@ -58,6 +58,7 @@ SDL_AppResult SDL_AppInit(void **appstate, int argc, char **argv) {
 
     // Inicializa la overlay con la ventana SDL y la ventana objetivo
     if (state->overlay.init(state->window, targetHwnd)) {
+        // TODO: Podria encapsular esto
         if (state->overlay.attachToTargetWindow()) {
             state->overlay.resizeToTargetClientArea();
             state->overlay.applyVisibility();
@@ -112,6 +113,7 @@ SDL_AppResult SDL_AppIterate(void *appstate) {
     state->delta_time = static_cast<float>(now - state->last_time) * 1e-9f;
     state->last_time = now;
 
+    // TODO: Podria encapsular esto
     static bool f3WasDown = false;
     // Detecta si la tecla F3 está presionada actualmente
     const bool f3IsDown = (GetAsyncKeyState(VK_F3) & 0x8000) != 0;
@@ -122,6 +124,7 @@ SDL_AppResult SDL_AppIterate(void *appstate) {
     //
     f3WasDown = f3IsDown;
 
+    // TODO: Podria encapsular esto
     if (state->overlay.isAttached()) {
         if (!state->overlay.isTargetWindowValid()) {
             SDL_Log("Target window is no longer valid. Exiting overlay.");

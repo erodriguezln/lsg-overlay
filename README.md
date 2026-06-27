@@ -1,51 +1,56 @@
-# SDL3 CMake Boilerplate
+# lsg-overlay
 
-Scaffold for SDL3 projects with Dear ImGui and automatic dependency resolution via CMake FetchContent.
+Aplicación de overlay transparente e interactivo para clientes de videojuegos Win32, construida con **C++20**, **SDL3** y **Dear ImGui**.
 
-## Requirements
+El overlay se acopla como una ventana hija de una ventana Win32 objetivo y se comunica con un backend web utilizando `cpp-httplib` y `nlohmann-json` para la obtención de métricas de juego en tiempo real.
 
-- CMake ≥ 3.30
-- C++20 capable compiler (MSVC)
-- Internet connection on first build (SDL3 and ImGui downloaded automatically; other libraries can be enabled in CMakeLists.txt)
+## Requisitos
 
-## Build
+- **CMake** ≥ 3.30
+- Compilador con soporte para **C++20** (MSVC / Visual Studio 2022 o superior)
+- **vcpkg** instalado en el sistema.
+- Variable de entorno **`VCPKG_ROOT`** configurada apuntando al directorio de instalación de vcpkg.
 
-### Using CMake Presets (Recommended)
+## Gestión de Dependencias
 
-To configure and build the project using CMake Presets (MSVC + Visual Studio 2026):
+El proyecto utiliza **vcpkg** en **Manifest Mode** para resolver automáticamente las librerías a través de los archivos:
+- `vcpkg.json`: Declara las librerías necesarias y habilita los bindings de SDL3 para Dear ImGui.
+- `vcpkg-configuration.json`: Fija la versión del registro (baseline) para asegurar compilaciones reproducibles.
 
-1. **List the available presets**:
-   ```bash
-   cmake --list-presets
-   ```
+## Compilación
 
-2. **Configure the project**:
-   ```bash
-   # Configure Debug build
-   cmake --preset windows-msvc-debug
+El proyecto utiliza **CMake Presets** para simplificar la compilación.
 
-   # Configure Release build
-   cmake --preset windows-msvc-release
-   ```
-
-3. **Build the project**:
-   ```bash
-   # Build Debug
-   cmake --build --preset windows-msvc-debug
-
-   # Build Release
-   cmake --build --preset windows-msvc-release
-   ```
-
-The compiled binary and its assets will be copied to `build/msvc-debug/` or `build/msvc-release/`.
-
-### Manual Build
-
-Alternatively, you can build manually using the default compiler and generator:
+### 1. Configurar el proyecto
+Ejecuta la configuración para generar los archivos de construcción (vcpkg descargará y compilará las dependencias en este paso):
 
 ```bash
-cmake -B build
-cmake --build build
+# Configuración en modo Debug
+cmake --preset windows-msvc-debug
+
+# Configuración en modo Release
+cmake --preset windows-msvc-release
 ```
 
-The binary is placed in `build/`.
+### 2. Compilar
+```bash
+# Compilar en modo Debug
+cmake --build --preset windows-msvc-debug
+
+# Compilar en modo Release e instalar DLLs
+cmake --build --preset windows-msvc-release --target install
+```
+
+Los binarios finales de la versión Release y sus DLLs asociadas se instalarán automáticamente en la ruta compartida del cliente: `C:/Dev/tesis/lsg-client/src/shared/`.
+
+## Ejecución
+
+El programa debe ser lanzado desde la consola o como un proceso hijo pasando los siguientes tres parámetros:
+
+```bash
+lsg-overlay.exe <playerId> <targetHWND> <videogameId>
+```
+
+- **`playerId`**: ID del jugador para consultar las estadísticas.
+- **`targetHWND`**: El manejador de ventana (HWND en formato numérico) de la ventana del juego sobre la cual se superpondrá el overlay.
+- **`videogameId`**: ID del videojuego para sincronizar las mecánicas específicas.
