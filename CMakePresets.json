@@ -61,6 +61,36 @@
         "lhs": "${hostSystemName}",
         "rhs": "Windows"
       }
+    },
+    {
+      "name": "windows-msvc-release-static",
+      "displayName": "Windows MSVC Release Static",
+      "description": "Release x64 autocontenido con dependencias y runtime de MSVC enlazados estáticamente",
+      "generator": "Visual Studio 18 2026",
+      "binaryDir": "${sourceDir}/build/msvc-release-static",
+      "architecture": {
+        "value": "x64",
+        "strategy": "external"
+      },
+      "toolset": {
+        "value": "host=x64",
+        "strategy": "external"
+      },
+      "cacheVariables": {
+        "CMAKE_CONFIGURATION_TYPES": "Release",
+        "CMAKE_EXPORT_COMPILE_COMMANDS": "ON",
+        "CMAKE_MSVC_RUNTIME_LIBRARY": "MultiThreaded",
+        "VCPKG_TARGET_TRIPLET": "x64-windows-static",
+        "CMAKE_TOOLCHAIN_FILE": {
+          "type": "FILEPATH",
+          "value": "$env{VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake"
+        }
+      },
+      "condition": {
+        "type": "equals",
+        "lhs": "${hostSystemName}",
+        "rhs": "Windows"
+      }
     }
   ],
   "buildPresets": [
@@ -73,6 +103,20 @@
       "name": "windows-msvc-release",
       "configurePreset": "windows-msvc-release",
       "configuration": "Release"
+    },
+    {
+      "name": "windows-msvc-release-static",
+      "configurePreset": "windows-msvc-release-static",
+      "configuration": "Release"
+    },
+    {
+      "name": "windows-msvc-release-static-install",
+      "displayName": "Install Windows MSVC Release Static",
+      "configurePreset": "windows-msvc-release-static",
+      "configuration": "Release",
+      "targets": [
+        "install"
+      ]
     }
   ]
 }

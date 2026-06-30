@@ -52,8 +52,8 @@ target_link_libraries(${PROJECT_NAME} PRIVATE
         nlohmann_json::nlohmann_json
 )
 
-# Windows: Copiar DLLs automáticamente al directorio de salida de la compilación
-if (WIN32)
+# Copiar las DLL de runtime sólo cuando vcpkg utiliza un triplet dinámico.
+if (WIN32 AND NOT VCPKG_TARGET_TRIPLET MATCHES "-static$")
     add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
             COMMAND ${CMAKE_COMMAND} -E copy_if_different
             "$<TARGET_RUNTIME_DLLS:${PROJECT_NAME}>"
@@ -84,6 +84,6 @@ endif ()
 # Instalación
 install(TARGETS ${PROJECT_NAME} DESTINATION .)
 
-if (WIN32)
+if (WIN32 AND NOT VCPKG_TARGET_TRIPLET MATCHES "-static$")
     install(FILES $<TARGET_RUNTIME_DLLS:${PROJECT_NAME}> DESTINATION . OPTIONAL)
 endif ()

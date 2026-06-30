@@ -37,11 +37,24 @@ cmake --preset windows-msvc-release
 # Compilar en modo Debug
 cmake --build --preset windows-msvc-debug
 
-# Compilar en modo Release e instalar DLLs
-cmake --build --preset windows-msvc-release --target install
+# Compilar en modo Release dinámico
+cmake --build --preset windows-msvc-release
 ```
 
-Los binarios finales de la versión Release y sus DLLs asociadas se instalarán automáticamente en la ruta compartida del cliente: `C:/Dev/tesis/lsg-client/src/shared/`.
+La compilación dinámica genera el ejecutable y sus DLLs asociadas dentro de `build/msvc-release/Release/`.
+
+### Release estático (un solo ejecutable)
+
+Este preset enlaza estáticamente SDL3, Brotli y el runtime de MSVC:
+
+```bash
+cmake --preset windows-msvc-release-static
+cmake --build --preset windows-msvc-release-static
+cmake --build --preset windows-msvc-release-static-install
+```
+
+El ejecutable autocontenido se genera en `build/msvc-release-static/Release/lsg-overlay.exe` y el preset de
+instalación lo copia, sin DLLs adicionales, a `C:/Dev/tesis/lsg-client/src/shared/`.
 
 ## Ejecución
 
