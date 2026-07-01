@@ -72,7 +72,7 @@ struct GameServerHealth {
 
 struct RedeemRequest {
     int modifiable_mechanic_videogame_id;
-    int point_dimension_id;
+    int attribute_id;
     int amount;
     nlohmann::json metadata;
 };
@@ -109,7 +109,7 @@ public:
 
     bool postReward(int rewardId);
 
-    bool redeem(int mechanicId, int pointDimensionId, int amount, int rewardId);
+    bool redeem(int mechanicId, int attributeId, int amount, int rewardId);
 
     bool getIsVideogameServerOnline() const;
 

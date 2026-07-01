@@ -272,22 +272,22 @@ void UI_BuildWindows(AppState &state) {
 
                             ImGui::Spacing();
 
-                            // Badges row: Costo y Dimension de la mecanica
+                            // Badges row: Costo y Atributo de la mecanica
                             int pointCost = -1;
-                            int pointDimensionId = -1;
+                            int attributeId = -1;
                             if (m.options.is_object()) {
                                 if (m.options.contains("cost_amount")) {
                                     pointCost = m.options["cost_amount"].get<int>();
                                 }
-                                if (m.options.contains("point_dimension_id")) {
-                                    pointDimensionId = m.options["point_dimension_id"].get<int>();
+                                if (m.options.contains("attribute_id")) {
+                                    attributeId = m.options["attribute_id"].get<int>();
                                 }
                             }
 
-                            if (pointCost == -1 || pointDimensionId == -1) {
+                            if (pointCost == -1 || attributeId == -1) {
                                 ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.40f, 0.20f, 0.0f, 0.20f));
                                 ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(1.0f, 0.60f, 0.30f, 1.0f));
-                                ImGui::Button("Falta point_dimension_id/cost_amount en options");
+                                ImGui::Button("Falta attribute_id/cost_amount en options");
                                 ImGui::PopStyleColor(2);
                             } else {
                                 char costStr[32];
@@ -297,10 +297,10 @@ void UI_BuildWindows(AppState &state) {
                                 ImGui::PopStyleColor();
 
                                 ImGui::SameLine();
-                                char dimensionStr[32];
-                                std::snprintf(dimensionStr, sizeof(dimensionStr), "Dimension %d", pointDimensionId);
+                                char attributeStr[32];
+                                std::snprintf(attributeStr, sizeof(attributeStr), "Atributo %d", attributeId);
                                 ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.12f, 0.18f, 0.28f, 0.60f));
-                                ImGui::Button(dimensionStr);
+                                ImGui::Button(attributeStr);
                                 ImGui::PopStyleColor();
                             }
 
@@ -316,7 +316,7 @@ void UI_BuildWindows(AppState &state) {
                                 rewardId = m.options["reward_id"].get<int>();
                             }
 
-                            bool isAvailable = (pointCost != -1 && pointDimensionId != -1 && rewardId != -1);
+                            bool isAvailable = (pointCost != -1 && attributeId != -1 && rewardId != -1);
 
                             if (!isAvailable || !serverOnline) {
                                 // Botón deshabilitado si no está disponible o el servidor está offline
@@ -338,7 +338,7 @@ void UI_BuildWindows(AppState &state) {
                                 std::snprintf(btnLabel, sizeof(btnLabel), "Redeem##%d", m.id_modifiable_mechanic);
 
                                 if (ImGui::Button(btnLabel, ImVec2(-1, 35.0f * scale))) {
-                                    state.network.redeem(m.id_modifiable_mechanic_videogame, pointDimensionId,
+                                    state.network.redeem(m.id_modifiable_mechanic_videogame, attributeId,
                                                          pointCost, rewardId);
                                 }
 

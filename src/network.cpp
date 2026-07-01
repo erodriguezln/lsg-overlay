@@ -223,10 +223,10 @@ bool Network::postReward(int rewardId) {
     return true;
 }
 
-bool Network::redeem(int mechanicId, int pointDimensionId, int amount, int rewardId) {
+bool Network::redeem(int mechanicId, int attributeId, int amount, int rewardId) {
     nlohmann::json payload;
     payload["modifiable_mechanic_videogame_id"] = mechanicId;
-    payload["point_dimension_id"] = pointDimensionId;
+    payload["attribute_id"] = attributeId;
     payload["amount"] = amount;
     payload["metadata"] = nullptr;
 
