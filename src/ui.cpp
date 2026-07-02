@@ -21,6 +21,17 @@ static void RenderAttribute(const char *name, double value, double max_val, floa
     ImGui::Spacing();
 }
 
+static std::string attributeIdToName(int attributeId, const std::vector<PlayerAttributePointsItem> &playerAttributes) {
+    for (const auto &attr: playerAttributes) {
+        if (attr.id_attributes == attributeId) {
+            return attr.attribute_name
+                       ? *attr.attribute_name
+                       : "Atributo desconocido";
+        }
+    }
+    return "Atributo desconocido";
+}
+
 void UI_Init(SDL_Window *window, SDL_Renderer *renderer) {
     IMGUI_CHECKVERSION();
     ImGui::CreateContext();
@@ -297,10 +308,8 @@ void UI_BuildWindows(AppState &state) {
                                 ImGui::PopStyleColor();
 
                                 ImGui::SameLine();
-                                char attributeStr[32];
-                                std::snprintf(attributeStr, sizeof(attributeStr), "Atributo %d", attributeId);
                                 ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.12f, 0.18f, 0.28f, 0.60f));
-                                ImGui::Button(attributeStr);
+                                ImGui::Button(attributeIdToName(attributeId, playerAttributes).c_str());
                                 ImGui::PopStyleColor();
                             }
 
