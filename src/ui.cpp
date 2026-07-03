@@ -26,10 +26,10 @@ static std::string attributeIdToName(int attributeId, const std::vector<PlayerAt
         if (attr.id_attributes == attributeId) {
             return attr.attribute_name
                        ? *attr.attribute_name
-                       : "Atributo desconocido";
+                       : "Unknown attribute";
         }
     }
-    return "Atributo desconocido";
+    return "Unknown attribute";
 }
 
 void UI_Init(SDL_Window *window, SDL_Renderer *renderer) {
@@ -140,7 +140,7 @@ void UI_BuildWindows(AppState &state) {
         ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(1.0f, 1.0f, 1.0f, 1.0f));
         ImGui::SetWindowFontScale(1.4f);
         if (videogame.name.empty()) {
-            ImGui::Text("Cargando juego...");
+            ImGui::Text("Loading game...");
         } else {
             ImGui::Text("%s", videogame.name.c_str());
         }
@@ -148,7 +148,7 @@ void UI_BuildWindows(AppState &state) {
         ImGui::PopStyleColor();
 
         if (player.name.empty()) {
-            ImGui::Text("Cargando jugador...");
+            ImGui::Text("Loading player...");
         } else {
             ImGui::TextColored(ImVec4(0.45f, 0.55f, 0.65f, 1.0f), "%s", player.name.c_str());
             ImGui::SameLine();
@@ -170,16 +170,16 @@ void UI_BuildWindows(AppState &state) {
         ImGui::SetNextWindowPos(ImVec2(padding, panelsY), ImGuiCond_Always);
         ImGui::SetNextWindowSize(ImVec2(leftPanelWidth, panelsH), ImGuiCond_Always);
 
-        ImGui::Begin("Atributos", nullptr,
+        ImGui::Begin("Attributes", nullptr,
                      ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove);
 
-        ImGui::TextColored(ImVec4(0.45f, 0.55f, 0.65f, 1.0f), "Balance calculado desde puntos");
+        ImGui::TextColored(ImVec4(0.45f, 0.55f, 0.65f, 1.0f), "Balance calculated from points");
         ImGui::Spacing();
         ImGui::Separator();
         ImGui::Spacing();
 
         if (playerAttributes.empty()) {
-            ImGui::Text("Cargando atributos...");
+            ImGui::Text("Loading attributes...");
         } else {
             for (const auto &attr: playerAttributes) {
                 // Al ser optional puede ser null, en ese caso se muestra "Atributo desconocido" y se evita crash
@@ -199,12 +199,12 @@ void UI_BuildWindows(AppState &state) {
         ImGui::SetNextWindowPos(ImVec2(rightPanelX, panelsY), ImGuiCond_Always);
         ImGui::SetNextWindowSize(ImVec2(rightPanelWidth, panelsH), ImGuiCond_Always);
 
-        ImGui::Begin("Mecánicas canjeables", nullptr,
+        ImGui::Begin("Redeemable mechanics", nullptr,
                      ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove);
 
         // // Header row
         char leftText[64];
-        std::snprintf(leftText, sizeof(leftText), "Mecánicas totales: %zu", mechanics.size());
+        std::snprintf(leftText, sizeof(leftText), "Total mechanics: %zu", mechanics.size());
         ImGui::TextColored(ImVec4(0.45f, 0.55f, 0.65f, 1.0f), "%s", leftText);
         ImGui::SameLine();
 
@@ -233,7 +233,7 @@ void UI_BuildWindows(AppState &state) {
         // Child container scrolleable para cards
         if (ImGui::BeginChild("##cards_scroller", ImVec2(0, 0), ImGuiChildFlags_AlwaysUseWindowPadding)) {
             if (mechanics.empty()) {
-                ImGui::Text("No hay mecánicas disponibles.");
+                ImGui::Text("No mechanics available.");
             } else {
                 for (const auto &m: mechanics) {
                     ImGui::PushStyleVar(ImGuiStyleVar_ChildRounding, 8.0f);
@@ -278,7 +278,7 @@ void UI_BuildWindows(AppState &state) {
                             ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.60f, 0.65f, 0.75f, 1.0f));
                             ImGui::TextWrapped("%s", m.modifiable_mechanic_description
                                                          ? m.modifiable_mechanic_description->c_str()
-                                                         : "Sin descripción");
+                                                         : "No description");
                             ImGui::PopStyleColor();
 
                             ImGui::Spacing();
@@ -298,11 +298,11 @@ void UI_BuildWindows(AppState &state) {
                             if (pointCost == -1 || attributeId == -1) {
                                 ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.40f, 0.20f, 0.0f, 0.20f));
                                 ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(1.0f, 0.60f, 0.30f, 1.0f));
-                                ImGui::Button("Falta attribute_id/cost_amount en options");
+                                ImGui::Button("Missing attribute_id/cost_amount in options");
                                 ImGui::PopStyleColor(2);
                             } else {
                                 char costStr[32];
-                                std::snprintf(costStr, sizeof(costStr), "Costo %d", pointCost);
+                                std::snprintf(costStr, sizeof(costStr), "Cost %d", pointCost);
                                 ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.12f, 0.18f, 0.28f, 0.60f));
                                 ImGui::Button(costStr);
                                 ImGui::PopStyleColor();
@@ -330,13 +330,13 @@ void UI_BuildWindows(AppState &state) {
                             if (!isAvailable || !serverOnline) {
                                 // Botón deshabilitado si no está disponible o el servidor está offline
                                 ImGui::BeginDisabled();
-                                ImGui::Button("No disponible", ImVec2(-1, 35.0f * scale));
+                                ImGui::Button("Unavailable", ImVec2(-1, 35.0f * scale));
                                 ImGui::EndDisabled();
 
                                 // Tooltip indicativo para avisar si el servidor está caído
                                 if (isAvailable && !serverOnline && ImGui::IsItemHovered(
                                         ImGuiHoveredFlags_AllowWhenDisabled)) {
-                                    ImGui::SetTooltip("Servidor del videojuego desconectado");
+                                    ImGui::SetTooltip("Videogame server disconnected");
                                 }
                             } else {
                                 // Botón "Redeem" activo
