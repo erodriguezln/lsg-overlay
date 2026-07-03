@@ -263,15 +263,21 @@ void UI_BuildWindows(AppState &state) {
                             const std::string mechanicType = m.modifiable_mechanic_type.value_or("unknown");
 
                             if (mechanicType == "buff") {
-                                ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.0f, 0.30f, 0.60f, 0.25f));
+                                ImVec4 baseColor = ImVec4(0.0f, 0.30f, 0.60f, 0.25f);
+                                ImGui::PushStyleColor(ImGuiCol_Button, baseColor);
+                                ImGui::PushStyleColor(ImGuiCol_ButtonHovered, baseColor);
+                                ImGui::PushStyleColor(ImGuiCol_ButtonActive, baseColor);
                                 ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.30f, 0.70f, 1.0f, 1.0f));
                                 ImGui::Button(mechanicType.c_str());
-                                ImGui::PopStyleColor(2);
+                                ImGui::PopStyleColor(4);
                             } else {
-                                ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.60f, 0.30f, 0.0f, 0.25f));
+                                ImVec4 baseColor = ImVec4(0.60f, 0.30f, 0.0f, 0.25f);
+                                ImGui::PushStyleColor(ImGuiCol_Button, baseColor);
+                                ImGui::PushStyleColor(ImGuiCol_ButtonHovered, baseColor);
+                                ImGui::PushStyleColor(ImGuiCol_ButtonActive, baseColor);
                                 ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(1.0f, 0.60f, 0.30f, 1.0f));
                                 ImGui::Button(mechanicType.c_str());
-                                ImGui::PopStyleColor(2);
+                                ImGui::PopStyleColor(4);
                             }
 
                             // Descripcion de la mecanica
@@ -296,21 +302,29 @@ void UI_BuildWindows(AppState &state) {
                             }
 
                             if (pointCost == -1 || attributeId == -1) {
-                                ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.40f, 0.20f, 0.0f, 0.20f));
+                                ImVec4 baseColor = ImVec4(0.40f, 0.20f, 0.0f, 0.20f);
+                                ImGui::PushStyleColor(ImGuiCol_Button, baseColor);
+                                ImGui::PushStyleColor(ImGuiCol_ButtonHovered, baseColor);
+                                ImGui::PushStyleColor(ImGuiCol_ButtonActive, baseColor);
                                 ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(1.0f, 0.60f, 0.30f, 1.0f));
                                 ImGui::Button("Missing attribute_id/cost_amount in options");
-                                ImGui::PopStyleColor(2);
+                                ImGui::PopStyleColor(4);
                             } else {
                                 char costStr[32];
                                 std::snprintf(costStr, sizeof(costStr), "Cost %d", pointCost);
-                                ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.12f, 0.18f, 0.28f, 0.60f));
+                                ImVec4 baseColor = ImVec4(0.12f, 0.18f, 0.28f, 0.60f);
+                                ImGui::PushStyleColor(ImGuiCol_Button, baseColor);
+                                ImGui::PushStyleColor(ImGuiCol_ButtonHovered, baseColor);
+                                ImGui::PushStyleColor(ImGuiCol_ButtonActive, baseColor);
                                 ImGui::Button(costStr);
-                                ImGui::PopStyleColor();
+                                ImGui::PopStyleColor(3);
 
                                 ImGui::SameLine();
-                                ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.12f, 0.18f, 0.28f, 0.60f));
+                                ImGui::PushStyleColor(ImGuiCol_Button, baseColor);
+                                ImGui::PushStyleColor(ImGuiCol_ButtonHovered, baseColor);
+                                ImGui::PushStyleColor(ImGuiCol_ButtonActive, baseColor);
                                 ImGui::Button(attributeIdToName(attributeId, playerAttributes).c_str());
-                                ImGui::PopStyleColor();
+                                ImGui::PopStyleColor(3);
                             }
 
                             // Columna 2: Redeem
