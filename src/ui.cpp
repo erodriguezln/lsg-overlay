@@ -125,22 +125,25 @@ void UI_BuildWindows(AppState &state) {
         const float scale = ImGui::GetIO().FontGlobalScale;
 
         const float padding = 24.0f * scale;
-        const float headerH = 60.0f * scale;
         const float bottomH = 40.0f * scale;
 
-        ImGui::SetNextWindowPos(ImVec2(padding, padding), ImGuiCond_Always);
-        ImGui::SetNextWindowSize(ImVec2(displaySize.x - padding * 2, headerH), ImGuiCond_Always);
-        ImGui::PushStyleColor(ImGuiCol_WindowBg, ImVec4(0, 0, 0, 0));
-        ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 0.0f);
+        const float leftPanelWidth = 380.0f * scale;
+        const float panelsY = padding;
+        const float panelsH = displaySize.y - panelsY - padding - bottomH;
 
+        // Session Panel (Header Panel)
+        const float sessionPanelH = 120.0f * scale;
+        ImGui::SetNextWindowPos(ImVec2(padding, panelsY), ImGuiCond_Always);
+        ImGui::SetNextWindowSize(ImVec2(leftPanelWidth, sessionPanelH), ImGuiCond_Always);
 
-        ImGui::Begin("##header", nullptr,
-                     ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoInputs | ImGuiWindowFlags_NoSavedSettings);
+        ImGui::Begin("Session", nullptr,
+                     ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove |
+                     ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse);
 
         ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(1.0f, 1.0f, 1.0f, 1.0f));
-        ImGui::SetWindowFontScale(1.4f);
+        ImGui::SetWindowFontScale(1.2f);
         if (videogame.name.empty()) {
-            ImGui::Text("Loading game...");
+            ImGui::Text("Loading videogame...");
         } else {
             ImGui::Text("%s", videogame.name.c_str());
         }
@@ -151,24 +154,18 @@ void UI_BuildWindows(AppState &state) {
             ImGui::Text("Loading player...");
         } else {
             ImGui::TextColored(ImVec4(0.45f, 0.55f, 0.65f, 1.0f), "%s", player.name.c_str());
-            ImGui::SameLine();
-            ImGui::TextColored(ImVec4(0.45f, 0.55f, 0.65f, 1.0f), " - ");
-            ImGui::SameLine();
             ImGui::TextColored(ImVec4(0.45f, 0.55f, 0.65f, 1.0f), "%s", player.email.c_str());
         }
 
         ImGui::End();
 
-        ImGui::PopStyleVar();
-        ImGui::PopStyleColor();
+        // Left Panel: Attributes
+        const float spacing = ImGui::GetStyle().ItemSpacing.y;
+        const float attributesPanelY = panelsY + sessionPanelH + spacing;
+        const float attributesPanelH = panelsH - sessionPanelH - spacing;
 
-        const float leftPanelWidth = 380.0f * scale;
-        const float panelsY = padding + headerH;
-        const float panelsH = displaySize.y - panelsY - padding - bottomH;
-
-        // Left Panel: Atributos
-        ImGui::SetNextWindowPos(ImVec2(padding, panelsY), ImGuiCond_Always);
-        ImGui::SetNextWindowSize(ImVec2(leftPanelWidth, panelsH), ImGuiCond_Always);
+        ImGui::SetNextWindowPos(ImVec2(padding, attributesPanelY), ImGuiCond_Always);
+        ImGui::SetNextWindowSize(ImVec2(leftPanelWidth, attributesPanelH), ImGuiCond_Always);
 
         ImGui::Begin("Attributes", nullptr,
                      ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove);
