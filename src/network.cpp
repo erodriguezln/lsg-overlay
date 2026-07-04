@@ -19,10 +19,6 @@ Network::Network(int playerId, int videogameId) : playerId(playerId),
     videogameServerClient.set_connection_timeout(2);
     videogameServerClient.set_read_timeout(2);
 
-    // No cambia, asi que se llama solo una vez al inicio
-    fetchPlayer();
-    fetchVideogame();
-
     // Inicializa el thread y corre loop en segundo plano
     workerThread = std::thread(&Network::runLoop, this);
 }
@@ -394,7 +390,17 @@ void Network::printDebug() const {
 }
 
 void Network::runLoop() {
+    bool playerLoaded = false;
+    bool videogameLoaded = false;
+
     while (isRunning) {
+        if (!playerLoaded) {
+            playerLoaded = fetchPlayer();
+        }
+        if (!videogameLoaded) {
+            videogameLoaded = fetchVideogame();
+        }
+
         fetchMechanics();
         fetchPlayerAttributes();
         // TODO: Podria dejar esto en otro thread...
