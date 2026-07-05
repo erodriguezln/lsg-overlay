@@ -11,7 +11,8 @@ Network::Network(int playerId, int videogameId) : playerId(playerId),
                                                   videogameId(videogameId),
                                                   client("http://127.0.0.1:3333"),
                                                   videogameServerClient("http://localhost:7878"),
-                                                  isRunning(true) {
+                                                  isRunning(true),
+                                                  isRedeemWorkerRunning(true) {
     // Límites de tiempo para evitar bloquear el thread si las conexiones no responden
     client.set_connection_timeout(5);
     client.set_read_timeout(10);
@@ -21,16 +22,24 @@ Network::Network(int playerId, int videogameId) : playerId(playerId),
 
     // Inicializa el thread y corre loop en segundo plano
     workerThread = std::thread(&Network::runLoop, this);
+
+    redeemWorkerThread = std::thread(&Network::redeemWorkerLoop, this);
 }
 
 Network::~Network() {
     isRunning = false;
+    isRedeemWorkerRunning = false;
 
     // Notifica al thread para que despierte y termine
     conditionalVariable.notify_one();
     // Espera a que el thread termine antes de destruir el objeto
     if (workerThread.joinable()) {
         workerThread.join();
+    }
+
+    redeemCV.notify_one();
+    if (redeemWorkerThread.joinable()) {
+        redeemWorkerThread.join();
     }
 }
 
@@ -220,6 +229,21 @@ bool Network::postReward(int rewardId) {
 }
 
 bool Network::redeem(int mechanicId, int attributeId, int amount, int rewardId) {
+    std::lock_guard<std::mutex> lock(redeemMutex);
+    if (redeemState.load() == RedeemState::Processing || redeemState.load() == RedeemState::Pending) {
+        return false;
+    }
+
+    pendingRedeem = {mechanicId, attributeId, amount, rewardId};
+
+    redeemState.store(RedeemState::Pending);
+    currentRedeemMechanicId.store(mechanicId);
+
+    redeemCV.notify_one();
+    return true;
+}
+
+bool Network::executeRedeem(int mechanicId, int attributeId, int amount, int rewardId) {
     nlohmann::json payload;
     payload["modifiable_mechanic_videogame_id"] = mechanicId;
     payload["attribute_id"] = attributeId;
@@ -263,6 +287,16 @@ bool Network::redeem(int mechanicId, int attributeId, int amount, int rewardId) 
 
     return false;
 }
+
+// Getter para saber si actualmente se está ejecutando un proceso de redeem en segundo plano
+bool Network::isCurrentlyProcessingOrPending() const {
+    return redeemState.load() == RedeemState::Processing || redeemState.load() == RedeemState::Pending;
+}
+
+int Network::getCurrentRedeemMechanicId() const {
+    return currentRedeemMechanicId.load();
+}
+
 
 PlayerResponse Network::getPlayer() const {
     std::lock_guard<std::mutex> lock(mutex);
@@ -412,5 +446,35 @@ void Network::runLoop() {
         });
 
         forceRefresh.store(false);
+    }
+}
+
+void Network::redeemWorkerLoop() {
+    while (isRedeemWorkerRunning.load()) {
+        RedeemTask request;
+        {
+            std::unique_lock<std::mutex> lock(redeemMutex);
+            // Espera hasta que haya un request pendiente o se indique que se debe detener el thread
+            redeemCV.wait(lock, [this] {
+                return redeemState.load() == RedeemState::Pending || !isRedeemWorkerRunning.load();
+            });
+
+            // Sale del loop si se indica que se debe detener el thread
+            if (!isRedeemWorkerRunning.load()) {
+                break;
+            }
+
+            request = pendingRedeem;
+            redeemState.store(RedeemState::Processing);
+        }
+
+        try {
+            executeRedeem(request.mechanicVideogameId, request.attributeId, request.amount, request.rewardId);
+        } catch (const std::exception &e) {
+            std::cerr << "Exception during redeem execution: " << e.what() << std::endl;
+        }
+
+        currentRedeemMechanicId.store(-1);
+        redeemState.store(RedeemState::Idle);
     }
 }

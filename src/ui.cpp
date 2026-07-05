@@ -337,17 +337,34 @@ void UI_BuildWindows(AppState &state) {
                             }
 
                             bool isAvailable = (pointCost != -1 && attributeId != -1 && rewardId != -1);
+                            bool isRedeeming = state.network.isCurrentlyProcessingOrPending();
+                            bool isCurrentMechanic =
+                                    state.network.getCurrentRedeemMechanicId() == m.id_modifiable_mechanic_videogame;
 
                             if (!isAvailable || !serverOnline) {
                                 // Botón deshabilitado si no está disponible o el servidor está offline
                                 ImGui::BeginDisabled();
+
+
                                 ImGui::Button("Unavailable", ImVec2(-1, 35.0f * scale));
+
                                 ImGui::EndDisabled();
 
                                 // Tooltip indicativo para avisar si el servidor está caído
                                 if (isAvailable && !serverOnline && ImGui::IsItemHovered(
                                         ImGuiHoveredFlags_AllowWhenDisabled)) {
                                     ImGui::SetTooltip("Videogame server disconnected");
+                                }
+                            } else if (isRedeeming) {
+                                ImGui::BeginDisabled();
+
+                                ImGui::Button(isCurrentMechanic ? "Redeeming..." : "Redeem",
+                                              ImVec2(-1, 35.0f * scale));
+                                ImGui::EndDisabled();
+
+                                if (ImGui::IsItemHovered(
+                                    ImGuiHoveredFlags_AllowWhenDisabled)) {
+                                    ImGui::SetTooltip("Wait for the current redemption to finish.");
                                 }
                             } else {
                                 // Botón "Redeem" activo
@@ -358,8 +375,16 @@ void UI_BuildWindows(AppState &state) {
                                 std::snprintf(btnLabel, sizeof(btnLabel), "Redeem##%d", m.id_modifiable_mechanic);
 
                                 if (ImGui::Button(btnLabel, ImVec2(-1, 35.0f * scale))) {
-                                    state.network.redeem(m.id_modifiable_mechanic_videogame, attributeId,
-                                                         pointCost, rewardId);
+                                    if (state.network.redeem(m.id_modifiable_mechanic_videogame, attributeId,
+                                                             pointCost, rewardId)) {
+                                        // A futuro se podria implementar algun tipo de notificacion
+                                        SDL_Log("Initiated redeem for mechanic %d",
+                                                m.id_modifiable_mechanic_videogame);
+                                    } else {
+                                        // A futuro se podria implementar algun tipo de notificacion
+                                        SDL_Log("Failed to initiate redeem for mechanic %d",
+                                                m.id_modifiable_mechanic_videogame);
+                                    }
                                 }
 
                                 ImGui::PopStyleColor(2);

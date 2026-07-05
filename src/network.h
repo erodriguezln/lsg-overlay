@@ -77,6 +77,13 @@ struct RedeemRequest {
     nlohmann::json metadata;
 };
 
+struct RedeemTask {
+    int mechanicVideogameId;
+    int attributeId;
+    int amount;
+    int rewardId;
+};
+
 struct RedeemResponse {
     std::string status;
     int points_ledger_id;
@@ -88,6 +95,12 @@ struct RedeemResponse {
     int player_id;
     int point_dimension_id;
     int modifiable_mechanic_videogame_id;
+};
+
+enum class RedeemState {
+    Idle,
+    Pending,
+    Processing,
 };
 
 
@@ -111,6 +124,10 @@ public:
 
     bool redeem(int mechanicId, int attributeId, int amount, int rewardId);
 
+    bool isCurrentlyProcessingOrPending() const;
+
+    int getCurrentRedeemMechanicId() const;
+
     bool getIsVideogameServerOnline() const;
 
     PlayerResponse getPlayer() const;
@@ -123,6 +140,9 @@ public:
 
     void printDebug() const;
 
+    std::atomic<int> currentRedeemMechanicId{-1};
+
+
 private:
     int playerId;
 
@@ -132,18 +152,29 @@ private:
 
     httplib::Client videogameServerClient;
 
+    // Se usa atomic bool y no mutex para evitar bloqueos innecesarios en el hilo principal al consultar el estado del servidor del videojuego.
     std::atomic<bool> isVideogameServerOnline{false};
 
     void runLoop();
 
-    std::atomic<bool> isRunning{false};
+    void redeemWorkerLoop();
 
-    std::thread workerThread;
+    bool executeRedeem(int mechanicId, int attributeId, int amount, int rewardId);
+
+    RedeemTask pendingRedeem;
+    std::atomic<RedeemState> redeemState{RedeemState::Idle};
+
+    mutable std::mutex redeemMutex;
+    std::condition_variable redeemCV;
+    std::atomic<bool> isRedeemWorkerRunning{true};
+    std::thread redeemWorkerThread;
+
 
     mutable std::mutex mutex;
-
-    std::condition_variable conditionalVariable;
     std::mutex conditionalVariableMutex;
+    std::condition_variable conditionalVariable;
+    std::thread workerThread;
+    std::atomic<bool> isRunning{false};
     std::atomic<bool> forceRefresh{false};
 
     std::vector<VideogameMechanic> mechanics;
