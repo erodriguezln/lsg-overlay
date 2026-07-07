@@ -12,8 +12,8 @@ Network::Network(int playerId, int videogameId) : playerId(playerId),
                                                   videogameId(videogameId),
                                                   client("http://127.0.0.1:3333"),
                                                   videogameServerClient("http://localhost:7878"),
-                                                  isRunning(true),
-                                                  isRedeemWorkerRunning(true) {
+                                                  isPeriodicQueryThreadRunning(true),
+                                                  isRedeemThreadRunning(true) {
     // Limites de tiempo para evitar bloqueos si el backend no responde
     client.set_connection_timeout(5);
     client.set_read_timeout(10);
@@ -24,25 +24,25 @@ Network::Network(int playerId, int videogameId) : playerId(playerId),
     videogameServerClient.set_read_timeout(2);
 
     // Lanza el hilo de consultas periódicas y el hilo de canjes
-    workerThread = std::thread(&Network::runLoop, this);
-    redeemWorkerThread = std::thread(&Network::redeemWorkerLoop, this);
+    periodicQueryThread = std::thread(&Network::periodicQueryLoop, this);
+    redeemThread = std::thread(&Network::redeemLoop, this);
 }
 
 Network::~Network() {
-    isRunning = false;
-    isRedeemWorkerRunning = false;
+    isPeriodicQueryThreadRunning = false;
+    isRedeemThreadRunning = false;
 
     // Despierta el hilo de consultas para que pueda terminar
-    conditionalVariable.notify_one();
+    periodicQueryWakeCv.notify_one();
     // Espera a que el hilo termine antes de destruir el objeto
-    if (workerThread.joinable()) {
-        workerThread.join();
+    if (periodicQueryThread.joinable()) {
+        periodicQueryThread.join();
     }
 
     // Despierta el hilo de canjes para que pueda terminar
-    redeemCV.notify_one();
-    if (redeemWorkerThread.joinable()) {
-        redeemWorkerThread.join();
+    redeemRequestCv.notify_one();
+    if (redeemThread.joinable()) {
+        redeemThread.join();
     }
 }
 
@@ -71,7 +71,7 @@ bool Network::fetchPlayer() {
 
         // Actualiza el jugador bajo mutex
         {
-            std::lock_guard<std::mutex> lock(mutex);
+            std::lock_guard<std::mutex> lock(backendDataMutex);
             player = std::move(fetchedPlayer);
         }
 
@@ -135,7 +135,7 @@ bool Network::fetchMechanics() {
 
         // Reemplaza la lista bajo mutex para que la UI la lea de forma segura
         {
-            std::lock_guard<std::mutex> lock(mutex);
+            std::lock_guard<std::mutex> lock(backendDataMutex);
             mechanics = std::move(fetchedMechanics);
         }
 
@@ -185,7 +185,7 @@ bool Network::fetchPlayerAttributes() {
 
         // Actualiza el balance de atributos del jugador bajo mutex
         {
-            std::lock_guard<std::mutex> lock(mutex);
+            std::lock_guard<std::mutex> lock(backendDataMutex);
             playerAttributePoints = std::move(fetchedItem);
         }
 
@@ -235,20 +235,20 @@ bool Network::postReward(int rewardId) {
     return true;
 }
 
-bool Network::redeem(int mechanicId, int attributeId, int amount, int rewardId) {
-    // Protege la lectura de redeemState y la escritura de pendingRedeem
-    std::lock_guard<std::mutex> lock(redeemMutex);
+bool Network::redeem(int mechanicVideogameId, int attributeId, int amount, int rewardId) {
+    // Protege la lectura de redeemState y la escritura de pendingRedeemTask
+    std::lock_guard<std::mutex> lock(redeemRequestMutex);
     if (redeemState.load() == RedeemState::Processing || redeemState.load() == RedeemState::Pending) {
         return false;
     }
 
-    pendingRedeem = {mechanicId, attributeId, amount, rewardId};
+    pendingRedeemTask = {mechanicVideogameId, attributeId, amount, rewardId};
 
     redeemState.store(RedeemState::Pending);
-    currentRedeemMechanicId.store(mechanicId);
+    activeRedeemMechanicVideogameId.store(mechanicVideogameId);
 
     // Despierta el hilo de canjes para procesar la solicitud
-    redeemCV.notify_one();
+    redeemRequestCv.notify_one();
     return true;
 }
 
@@ -256,9 +256,9 @@ bool Network::redeem(int mechanicId, int attributeId, int amount, int rewardId) 
 // TODO lsg-core puede aprobar el canje y el servidor del videojuego puede fallar al aplicar la recompensa
 // Se podria implementar en lsg-core un mecanismo de rollback o reintento para manejar este caso.
 // Esto lo documentare como limitaciones y mejoras futuras
-bool Network::executeRedeem(int mechanicId, int attributeId, int amount, int rewardId) {
+bool Network::executeRedeem(int mechanicVideogameId, int attributeId, int amount, int rewardId) {
     nlohmann::json payload;
-    payload["modifiable_mechanic_videogame_id"] = mechanicId;
+    payload["modifiable_mechanic_videogame_id"] = mechanicVideogameId;
     payload["attribute_id"] = attributeId;
     payload["amount"] = amount;
     payload["metadata"] = nullptr;
@@ -288,9 +288,9 @@ bool Network::executeRedeem(int mechanicId, int attributeId, int amount, int rew
             // Notifica la mecanica al videojuego o mod
             bool rewardPosted = postReward(rewardId);
             // Fuerza un refresh para que la UI muestre el nuevo balance
-            forceRefresh.store(true);
+            periodicQueryRefreshRequested.store(true);
             // Despierta el hilo de consultas sin esperar los 5s
-            conditionalVariable.notify_one();
+            periodicQueryWakeCv.notify_one();
 
             return rewardPosted;
         }
@@ -307,16 +307,16 @@ bool Network::isCurrentlyProcessingOrPending() const {
 }
 
 int Network::getCurrentRedeemMechanicVideogameId() const {
-    return currentRedeemMechanicId.load();
+    return activeRedeemMechanicVideogameId.load();
 }
 
 PlayerResponse Network::getPlayer() const {
-    std::lock_guard<std::mutex> lock(mutex);
+    std::lock_guard<std::mutex> lock(backendDataMutex);
     return player;
 }
 
 Videogame Network::getVideogame() const {
-    std::lock_guard<std::mutex> lock(mutex);
+    std::lock_guard<std::mutex> lock(backendDataMutex);
     return videogame;
 }
 
@@ -394,7 +394,7 @@ bool Network::fetchVideogame() {
         }
 
         {
-            std::lock_guard<std::mutex> lock(mutex);
+            std::lock_guard<std::mutex> lock(backendDataMutex);
             videogame = std::move(fetchedVideogame);
         }
 
@@ -406,12 +406,12 @@ bool Network::fetchVideogame() {
 }
 
 std::vector<VideogameMechanic> Network::getMechanics() const {
-    std::lock_guard<std::mutex> lock(mutex);
+    std::lock_guard<std::mutex> lock(backendDataMutex);
     return mechanics;
 }
 
 std::vector<PlayerAttributePointsItem> Network::getPlayerAttributePoints() const {
-    std::lock_guard<std::mutex> lock(mutex);
+    std::lock_guard<std::mutex> lock(backendDataMutex);
     return playerAttributePoints;
 }
 
@@ -420,7 +420,7 @@ bool Network::getIsVideogameServerOnline() const {
 }
 
 void Network::printDebug() const {
-    std::lock_guard<std::mutex> lock(mutex);
+    std::lock_guard<std::mutex> lock(backendDataMutex);
     std::cout << "--- Mechanics Info (Count: " << mechanics.size() << ") ---\n";
     for (const auto &mechanic: mechanics) {
         std::cout << "ID: " << mechanic.id_modifiable_mechanic << '\n';
@@ -435,11 +435,11 @@ void Network::printDebug() const {
     }
 }
 
-void Network::runLoop() {
+void Network::periodicQueryLoop() {
     bool playerLoaded = false;
     bool videogameLoaded = false;
 
-    while (isRunning) {
+    while (isPeriodicQueryThreadRunning) {
         // Datos que solo se necesitan una vez al inicio
         if (!playerLoaded) {
             playerLoaded = fetchPlayer();
@@ -454,34 +454,34 @@ void Network::runLoop() {
         fetchVideogameServerHealth();
 
         // Espera cinco segundos o despierta antes si hay cierre o refresh forzado
-        std::unique_lock<std::mutex> lock(conditionalVariableMutex);
-        conditionalVariable.wait_for(lock, std::chrono::seconds(5), [this] {
-            return !isRunning.load() || forceRefresh.load();
+        std::unique_lock<std::mutex> lock(periodicQueryWakeMutex);
+        periodicQueryWakeCv.wait_for(lock, std::chrono::seconds(5), [this] {
+            return !isPeriodicQueryThreadRunning.load() || periodicQueryRefreshRequested.load();
         });
 
-        forceRefresh.store(false);
+        periodicQueryRefreshRequested.store(false);
     }
 }
 
-void Network::redeemWorkerLoop() {
-    while (isRedeemWorkerRunning.load()) {
+void Network::redeemLoop() {
+    while (isRedeemThreadRunning.load()) {
         RedeemTask redeemRequest;
         {
 
-            std::unique_lock<std::mutex> lock(redeemMutex);
+            std::unique_lock<std::mutex> lock(redeemRequestMutex);
             // Espera hasta que haya un canje pendiente o se pida detener el hilo
-            redeemCV.wait(lock, [this] {
-                return redeemState.load() == RedeemState::Pending || !isRedeemWorkerRunning.load();
+            redeemRequestCv.wait(lock, [this] {
+                return redeemState.load() == RedeemState::Pending || !isRedeemThreadRunning.load();
             });
 
             // Sale del loop si se pidio detener el hilo
-            if (!isRedeemWorkerRunning.load()) {
+            if (!isRedeemThreadRunning.load()) {
                 break;
             }
 
             // Copia la tarea y marca el estado antes de soltar el lock
             // Esto asegura que redeem() no acepte otra solicitud mientras esta se ejecuta
-            redeemRequest = pendingRedeem;
+            redeemRequest = pendingRedeemTask;
             redeemState.store(RedeemState::Processing);
         } // El lock se libera al salir del scope
 
@@ -493,7 +493,7 @@ void Network::redeemWorkerLoop() {
         }
 
         // Limpia el estado para permitir el siguiente canje
-        currentRedeemMechanicId.store(-1);
+        activeRedeemMechanicVideogameId.store(-1);
         redeemState.store(RedeemState::Idle);
     }
 }

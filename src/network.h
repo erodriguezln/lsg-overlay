@@ -132,9 +132,9 @@ public:
     // POST /reward al servidor del videojuego - materializa la mecanica en el juego
     bool postReward(int rewardId);
 
-    // Registra una solicitud de canje para que la procese el redeemWorkerThread
+    // Registra una solicitud de canje para que la procese el redeemThread
     // Retorna false si ya hay un canje en curso
-    bool redeem(int mechanicId, int attributeId, int amount, int rewardId);
+    bool redeem(int mechanicVideogameId, int attributeId, int amount, int rewardId);
 
     // true si hay un canje pendiente o en curso
     bool isCurrentlyProcessingOrPending() const;
@@ -158,7 +158,7 @@ public:
 
     // ID de la mecanica en proceso de canje
     // Es atomic para que la UI pueda leerlo sin bloqueo
-    std::atomic<int> currentRedeemMechanicId{-1};
+    std::atomic<int> activeRedeemMechanicVideogameId{-1};
 
 private:
     int playerId;
@@ -180,23 +180,23 @@ private:
     Videogame videogame;
 
     // Hilo de consultas periodicas
-    void runLoop();
+    void periodicQueryLoop();
 
-    mutable std::mutex mutex; // Protege player videogame mechanics y playerAttributePoints
-    std::mutex conditionalVariableMutex;
-    std::condition_variable conditionalVariable; // Permite dormir y despertar al hilo
-    std::thread workerThread;
-    std::atomic<bool> isRunning{false}; // false indica al workerThread que debe terminar
-    std::atomic<bool> forceRefresh{false}; // true despierta el hilo antes de los 5s
+    mutable std::mutex backendDataMutex; // Protege player videogame mechanics y playerAttributePoints
+    std::mutex periodicQueryWakeMutex;
+    std::condition_variable periodicQueryWakeCv; // Permite dormir y despertar al hilo
+    std::thread periodicQueryThread;
+    std::atomic<bool> isPeriodicQueryThreadRunning{false}; // false indica al hilo que debe terminar
+    std::atomic<bool> periodicQueryRefreshRequested{false}; // true despierta el hilo antes de los 5s
 
     // Hilo de canjes
-    void redeemWorkerLoop();
+    void redeemLoop();
 
-    bool executeRedeem(int mechanicId, int attributeId, int amount, int rewardId); // Lógica interna del canje
-    RedeemTask pendingRedeem; // Solicitud de canje registrada por redeem
+    bool executeRedeem(int mechanicVideogameId, int attributeId, int amount, int rewardId); // Lógica interna del canje
+    RedeemTask pendingRedeemTask; // Solicitud de canje registrada por redeem
     std::atomic<RedeemState> redeemState{RedeemState::Idle}; // Estado actual del canje
-    mutable std::mutex redeemMutex; // Protege pendingRedeem y redeemState
-    std::condition_variable redeemCV; // Permite dormir y despertar al hilo
-    std::atomic<bool> isRedeemWorkerRunning{true}; // false indica al redeemWorkerThread que debe terminar
-    std::thread redeemWorkerThread;
+    mutable std::mutex redeemRequestMutex; // Protege pendingRedeemTask y redeemState
+    std::condition_variable redeemRequestCv; // Permite dormir y despertar al hilo
+    std::atomic<bool> isRedeemThreadRunning{true}; // false indica al redeemThread que debe terminar
+    std::thread redeemThread;
 };
