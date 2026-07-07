@@ -293,7 +293,7 @@ bool Network::isCurrentlyProcessingOrPending() const {
     return redeemState.load() == RedeemState::Processing || redeemState.load() == RedeemState::Pending;
 }
 
-int Network::getCurrentRedeemMechanicId() const {
+int Network::getCurrentRedeemMechanicVideogameId() const {
     return currentRedeemMechanicId.load();
 }
 

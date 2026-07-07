@@ -126,7 +126,8 @@ public:
 
     bool isCurrentlyProcessingOrPending() const;
 
-    int getCurrentRedeemMechanicId() const;
+    // Retorna el ID de la mecánica en proceso de canje o -1 si no hay ninguna activa
+    int getCurrentRedeemMechanicVideogameId() const;
 
     bool getIsVideogameServerOnline() const;
 

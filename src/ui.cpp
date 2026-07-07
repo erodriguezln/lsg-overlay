@@ -339,7 +339,7 @@ void UI_BuildWindows(AppState &state) {
                             bool isAvailable = (pointCost != -1 && attributeId != -1 && rewardId != -1);
                             bool isRedeeming = state.network.isCurrentlyProcessingOrPending();
                             bool isCurrentMechanic =
-                                    state.network.getCurrentRedeemMechanicId() == m.id_modifiable_mechanic_videogame;
+                                    state.network.getCurrentRedeemMechanicVideogameId() == m.id_modifiable_mechanic_videogame;
 
                             if (!isAvailable || !serverOnline) {
                                 // Botón deshabilitado si no está disponible o el servidor está offline
