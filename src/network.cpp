@@ -7,22 +7,24 @@
 #include <optional>
 #include <chrono>
 
+// Inicializa los clientes HTTP y los hilos de fondo
 Network::Network(int playerId, int videogameId) : playerId(playerId),
                                                   videogameId(videogameId),
                                                   client("http://127.0.0.1:3333"),
                                                   videogameServerClient("http://localhost:7878"),
                                                   isRunning(true),
                                                   isRedeemWorkerRunning(true) {
-    // Límites de tiempo para evitar bloquear el thread si las conexiones no responden
+    // Limites de tiempo para evitar bloqueos si el backend no responde
     client.set_connection_timeout(5);
     client.set_read_timeout(10);
 
+    // El servidor del videojuego puede estar apagado
+    // Sus timeouts son mas cortos para no retrasar el hilo de consultas
     videogameServerClient.set_connection_timeout(2);
     videogameServerClient.set_read_timeout(2);
 
-    // Inicializa el thread y corre loop en segundo plano
+    // Lanza el hilo de consultas periódicas y el hilo de canjes
     workerThread = std::thread(&Network::runLoop, this);
-
     redeemWorkerThread = std::thread(&Network::redeemWorkerLoop, this);
 }
 
@@ -30,13 +32,14 @@ Network::~Network() {
     isRunning = false;
     isRedeemWorkerRunning = false;
 
-    // Notifica al thread para que despierte y termine
+    // Despierta el hilo de consultas para que pueda terminar
     conditionalVariable.notify_one();
-    // Espera a que el thread termine antes de destruir el objeto
+    // Espera a que el hilo termine antes de destruir el objeto
     if (workerThread.joinable()) {
         workerThread.join();
     }
 
+    // Despierta el hilo de canjes para que pueda terminar
     redeemCV.notify_one();
     if (redeemWorkerThread.joinable()) {
         redeemWorkerThread.join();
@@ -66,7 +69,7 @@ bool Network::fetchPlayer() {
 
         fetchedPlayer.roles = json["roles"].get<std::vector<std::string> >();
 
-        // Actualiza el player de manera segura con mutex
+        // Actualiza el jugador bajo mutex
         {
             std::lock_guard<std::mutex> lock(mutex);
             player = std::move(fetchedPlayer);
@@ -95,6 +98,7 @@ bool Network::fetchMechanics() {
 
         std::vector<VideogameMechanic> fetchedMechanics;
 
+        // Convierte cada elemento JSON a un struct
         for (const auto &m: json) {
             VideogameMechanic mechanic;
 
@@ -113,6 +117,7 @@ bool Network::fetchMechanics() {
             mechanic.modifiable_mechanic_name =
                     m.at("modifiable_mechanic_name").get<std::string>();
 
+            // Campos opcionales
             if (m.contains("modifiable_mechanic_description") &&
                 !m["modifiable_mechanic_description"].is_null()) {
                 mechanic.modifiable_mechanic_description =
@@ -128,6 +133,7 @@ bool Network::fetchMechanics() {
             fetchedMechanics.push_back(std::move(mechanic));
         }
 
+        // Reemplaza la lista bajo mutex para que la UI la lea de forma segura
         {
             std::lock_guard<std::mutex> lock(mutex);
             mechanics = std::move(fetchedMechanics);
@@ -158,7 +164,7 @@ bool Network::fetchPlayerAttributes() {
         for (const auto &item_json: json) {
             PlayerAttributePointsItem item;
 
-            // Check keys safely to prevent JSON type/key exceptions
+            // Usa valores por defecto para evitar errores por claves faltantes
             item.id_players = item_json.value("id_players", 0);
             item.player_name = item_json.value("player_name", "");
             item.player_email = item_json.value("player_email", "");
@@ -177,7 +183,7 @@ bool Network::fetchPlayerAttributes() {
             fetchedItem.push_back(item);
         }
 
-        // Actualiza la lista de puntos de atributos del jugador de manera segura con mutex
+        // Actualiza el balance de atributos del jugador bajo mutex
         {
             std::lock_guard<std::mutex> lock(mutex);
             playerAttributePoints = std::move(fetchedItem);
@@ -197,7 +203,7 @@ bool Network::fetchVideogameServerHealth() {
         std::cerr << "Failed to fetch videogame server health: "
                 << (response ? std::to_string(response->status) : "No response from server")
                 << std::endl;
-        // Inicialmente marca el servidor del videojuego como offline
+        // Marca el servidor del videojuego como offline
         isVideogameServerOnline.store(false);
         return false;
     }
@@ -211,11 +217,12 @@ bool Network::postReward(int rewardId) {
     nlohmann::json payload;
     payload["reward_id"] = rewardId;
 
+    // Cliente local descartable
     httplib::Client localVideogameServerClient("http://localhost:7878");
     localVideogameServerClient.set_connection_timeout(2);
     localVideogameServerClient.set_read_timeout(2);
 
-    // Envía la mecanica elegida por POST para materializarla en el videojuego/mod
+    // Envia la mecanica elegida por POST al videojuego o mod para materializarla
     auto response = localVideogameServerClient.Post("/reward", payload.dump(), "application/json");
 
     if (!response || response->status != 200) {
@@ -229,6 +236,7 @@ bool Network::postReward(int rewardId) {
 }
 
 bool Network::redeem(int mechanicId, int attributeId, int amount, int rewardId) {
+    // Protege la lectura de redeemState y la escritura de pendingRedeem
     std::lock_guard<std::mutex> lock(redeemMutex);
     if (redeemState.load() == RedeemState::Processing || redeemState.load() == RedeemState::Pending) {
         return false;
@@ -239,10 +247,15 @@ bool Network::redeem(int mechanicId, int attributeId, int amount, int rewardId) 
     redeemState.store(RedeemState::Pending);
     currentRedeemMechanicId.store(mechanicId);
 
+    // Despierta el hilo de canjes para procesar la solicitud
     redeemCV.notify_one();
     return true;
 }
 
+
+// TODO lsg-core puede aprobar el canje y el servidor del videojuego puede fallar al aplicar la recompensa
+// Se podria implementar en lsg-core un mecanismo de rollback o reintento para manejar este caso.
+// Esto lo documentare como limitaciones y mejoras futuras
 bool Network::executeRedeem(int mechanicId, int attributeId, int amount, int rewardId) {
     nlohmann::json payload;
     payload["modifiable_mechanic_videogame_id"] = mechanicId;
@@ -253,8 +266,8 @@ bool Network::executeRedeem(int mechanicId, int attributeId, int amount, int rew
     std::string path = "/videogames/" + std::to_string(videogameId) + "/players/" + std::to_string(playerId) +
                        "/redeem";
 
-    // Se usa un cliente local para evitar colisiones de socket (race conditions) con el thread secundario de fondo, ya que httplib::Client no es thread-safe.
-    // Al salir de scope se destruye automáticamente cerrando el socket.
+    // Cliente local para evitar compartir sockets entre hilos
+    // Al salir del scope se destruye y cierra el socket
     httplib::Client localClient("http://127.0.0.1:3333");
     localClient.set_connection_timeout(5);
     localClient.set_read_timeout(10);
@@ -272,11 +285,11 @@ bool Network::executeRedeem(int mechanicId, int attributeId, int amount, int rew
         auto jsonResponse = nlohmann::json::parse(response->body);
         std::string status = jsonResponse.value("status", "");
         if (status == "redeemed") {
-            // Notificar recompensa externa en el videojuego/mod
+            // Notifica la mecanica al videojuego o mod
             bool rewardPosted = postReward(rewardId);
-            // Actualizar los atributos del jugador para reflejar el nuevo balance de puntos
+            // Fuerza un refresh para que la UI muestre el nuevo balance
             forceRefresh.store(true);
-            // Notificar al thread de fondo que se ha producido un cambio que requiere actualización
+            // Despierta el hilo de consultas sin esperar los 5s
             conditionalVariable.notify_one();
 
             return rewardPosted;
@@ -288,7 +301,7 @@ bool Network::executeRedeem(int mechanicId, int attributeId, int amount, int rew
     return false;
 }
 
-// Getter para saber si actualmente se está ejecutando un proceso de redeem en segundo plano
+// Indica si hay un canje pendiente o en proceso
 bool Network::isCurrentlyProcessingOrPending() const {
     return redeemState.load() == RedeemState::Processing || redeemState.load() == RedeemState::Pending;
 }
@@ -296,7 +309,6 @@ bool Network::isCurrentlyProcessingOrPending() const {
 int Network::getCurrentRedeemMechanicVideogameId() const {
     return currentRedeemMechanicId.load();
 }
-
 
 PlayerResponse Network::getPlayer() const {
     std::lock_guard<std::mutex> lock(mutex);
@@ -428,6 +440,7 @@ void Network::runLoop() {
     bool videogameLoaded = false;
 
     while (isRunning) {
+        // Datos que solo se necesitan una vez al inicio
         if (!playerLoaded) {
             playerLoaded = fetchPlayer();
         }
@@ -435,11 +448,12 @@ void Network::runLoop() {
             videogameLoaded = fetchVideogame();
         }
 
+        // Datos que pueden cambiar en cada ciclo
         fetchMechanics();
         fetchPlayerAttributes();
-        // TODO: Podria dejar esto en otro thread...
         fetchVideogameServerHealth();
 
+        // Espera cinco segundos o despierta antes si hay cierre o refresh forzado
         std::unique_lock<std::mutex> lock(conditionalVariableMutex);
         conditionalVariable.wait_for(lock, std::chrono::seconds(5), [this] {
             return !isRunning.load() || forceRefresh.load();
@@ -451,29 +465,34 @@ void Network::runLoop() {
 
 void Network::redeemWorkerLoop() {
     while (isRedeemWorkerRunning.load()) {
-        RedeemTask request;
+        RedeemTask redeemRequest;
         {
+
             std::unique_lock<std::mutex> lock(redeemMutex);
-            // Espera hasta que haya un request pendiente o se indique que se debe detener el thread
+            // Espera hasta que haya un canje pendiente o se pida detener el hilo
             redeemCV.wait(lock, [this] {
                 return redeemState.load() == RedeemState::Pending || !isRedeemWorkerRunning.load();
             });
 
-            // Sale del loop si se indica que se debe detener el thread
+            // Sale del loop si se pidio detener el hilo
             if (!isRedeemWorkerRunning.load()) {
                 break;
             }
 
-            request = pendingRedeem;
+            // Copia la tarea y marca el estado antes de soltar el lock
+            // Esto asegura que redeem() no acepte otra solicitud mientras esta se ejecuta
+            redeemRequest = pendingRedeem;
             redeemState.store(RedeemState::Processing);
-        }
+        } // El lock se libera al salir del scope
 
         try {
-            executeRedeem(request.mechanicVideogameId, request.attributeId, request.amount, request.rewardId);
+            executeRedeem(redeemRequest.mechanicVideogameId, redeemRequest.attributeId, redeemRequest.amount,
+                          redeemRequest.rewardId);
         } catch (const std::exception &e) {
             std::cerr << "Exception during redeem execution: " << e.what() << std::endl;
         }
 
+        // Limpia el estado para permitir el siguiente canje
         currentRedeemMechanicId.store(-1);
         redeemState.store(RedeemState::Idle);
     }

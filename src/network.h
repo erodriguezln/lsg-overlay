@@ -1,9 +1,4 @@
-//
-// Created by Mathw on 24/6/2026.
-//
-
-#ifndef LSG_OVERLAY_NETWORK_H
-#define LSG_OVERLAY_NETWORK_H
+#pragma once
 
 #include <httplib.h>
 #include <nlohmann/json.hpp>
@@ -13,7 +8,7 @@
 
 #include<mutex>
 #include <thread>
-#include <atomic>
+#include <atomic> // Variables compartidas sin bloqueo
 #include<condition_variable>
 
 struct PlayerResponse {
@@ -41,7 +36,7 @@ struct Videogame {
 struct VideogameMechanic {
     int id_modifiable_mechanic_videogame;
     int id_videogame;
-    nlohmann::json options; // Objeto JSON flexible (por costo, dimensiones, etc.)
+    nlohmann::json options;
     int id_modifiable_mechanic;
     std::string modifiable_mechanic_name;
     std::optional<std::string> modifiable_mechanic_description;
@@ -77,6 +72,7 @@ struct RedeemRequest {
     nlohmann::json metadata;
 };
 
+// Solicitud de canje procesada por el hilo de canjes
 struct RedeemTask {
     int mechanicVideogameId;
     int attributeId;
@@ -97,40 +93,59 @@ struct RedeemResponse {
     int modifiable_mechanic_videogame_id;
 };
 
+// Estados de un canje
 enum class RedeemState {
-    Idle,
-    Pending,
-    Processing,
+    Idle, // Sin operacion activa
+    Pending, // Solicitud creada y esperando al hilo de canjes
+    Processing, // Canje en ejecucion contra el backend
 };
 
 
+// Comunica el overlay con el backend local de LSG Client y con el servidor del videojuego/mod
+// Mantiene copias locales de jugador videojuego mecanicas y puntos
+// Usa hilos de fondo para refrescar datos y procesar canjes
+// La UI debe leer los datos usando los getters thread safe
 class Network {
 public:
+    // Crea los clientes HTTP y lanza los hilos de fondo
     Network(int playerId, int videogameId);
 
+    // Señala a los hilos que deben detenerse y espera a que terminen
     ~Network();
 
+
+    // GET /whoami - obtiene los datos del jugador de la sesión activa
     bool fetchPlayer();
 
+    // GET /videogames/:id/mechanics - obtiene las mecánicas disponibles para el juego activo
     bool fetchMechanics();
 
+    // GET /players/:id/attributes/points - obtiene el balance de puntos por atributo
     bool fetchPlayerAttributes();
 
+    // GET /health (servidor del videojuego) - actualiza isVideogameServerOnline
     bool fetchVideogameServerHealth();
 
+    // GET /videogames/:id - obtiene los datos del videojuego activo
     bool fetchVideogame();
 
+    // POST /reward al servidor del videojuego - materializa la mecanica en el juego
     bool postReward(int rewardId);
 
+    // Registra una solicitud de canje para que la procese el redeemWorkerThread
+    // Retorna false si ya hay un canje en curso
     bool redeem(int mechanicId, int attributeId, int amount, int rewardId);
 
+    // true si hay un canje pendiente o en curso
     bool isCurrentlyProcessingOrPending() const;
 
-    // Retorna el ID de la mecánica en proceso de canje o -1 si no hay ninguna activa
+    // Retorna el ID de la mecanica en proceso o -1 si no hay ninguna activa
     int getCurrentRedeemMechanicVideogameId() const;
 
+    // true si el servidor del videojuego respondió correctamente en el último health check
     bool getIsVideogameServerOnline() const;
 
+    // Getters thread-safe adquieren el mutex internamente y retornan una copia del dato
     PlayerResponse getPlayer() const;
 
     Videogame getVideogame() const;
@@ -141,48 +156,47 @@ public:
 
     void printDebug() const;
 
+    // ID de la mecanica en proceso de canje
+    // Es atomic para que la UI pueda leerlo sin bloqueo
     std::atomic<int> currentRedeemMechanicId{-1};
-
 
 private:
     int playerId;
-
     int videogameId;
 
+    // Backend local de LSG Client
     httplib::Client client;
-
+    // Servidor del videojuego o mod solo para health check
     httplib::Client videogameServerClient;
 
-    // Se usa atomic bool y no mutex para evitar bloqueos innecesarios en el hilo principal al consultar el estado del servidor del videojuego.
+    // Permite leer un solo valor desde cualquier hilo sin mutex
     std::atomic<bool> isVideogameServerOnline{false};
 
-    void runLoop();
-
-    void redeemWorkerLoop();
-
-    bool executeRedeem(int mechanicId, int attributeId, int amount, int rewardId);
-
-    RedeemTask pendingRedeem;
-    std::atomic<RedeemState> redeemState{RedeemState::Idle};
-
-    mutable std::mutex redeemMutex;
-    std::condition_variable redeemCV;
-    std::atomic<bool> isRedeemWorkerRunning{true};
-    std::thread redeemWorkerThread;
-
-
-    mutable std::mutex mutex;
-    std::mutex conditionalVariableMutex;
-    std::condition_variable conditionalVariable;
-    std::thread workerThread;
-    std::atomic<bool> isRunning{false};
-    std::atomic<bool> forceRefresh{false};
-
+    // Datos leidos por la UI y actualizados por el hilo de consultas
+    // Deben accederse bajo mutex o mediante getters
     std::vector<VideogameMechanic> mechanics;
     PlayerResponse player;
     std::vector<PlayerAttributePointsItem> playerAttributePoints;
     Videogame videogame;
+
+    // Hilo de consultas periodicas
+    void runLoop();
+
+    mutable std::mutex mutex; // Protege player videogame mechanics y playerAttributePoints
+    std::mutex conditionalVariableMutex;
+    std::condition_variable conditionalVariable; // Permite dormir y despertar al hilo
+    std::thread workerThread;
+    std::atomic<bool> isRunning{false}; // false indica al workerThread que debe terminar
+    std::atomic<bool> forceRefresh{false}; // true despierta el hilo antes de los 5s
+
+    // Hilo de canjes
+    void redeemWorkerLoop();
+
+    bool executeRedeem(int mechanicId, int attributeId, int amount, int rewardId); // Lógica interna del canje
+    RedeemTask pendingRedeem; // Solicitud de canje registrada por redeem
+    std::atomic<RedeemState> redeemState{RedeemState::Idle}; // Estado actual del canje
+    mutable std::mutex redeemMutex; // Protege pendingRedeem y redeemState
+    std::condition_variable redeemCV; // Permite dormir y despertar al hilo
+    std::atomic<bool> isRedeemWorkerRunning{true}; // false indica al redeemWorkerThread que debe terminar
+    std::thread redeemWorkerThread;
 };
-
-
-#endif //LSG_OVERLAY_NETWORK_H
