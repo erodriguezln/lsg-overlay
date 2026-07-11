@@ -1,7 +1,6 @@
 #include "ui.h"
 #include "main.h"
 
-// ImGui headers live here — only this TU needs to compile them.
 #include "imgui.h"
 #include "imgui_impl_sdl3.h"
 #include "imgui_impl_sdlrenderer3.h"
@@ -339,7 +338,8 @@ void UI_BuildWindows(AppState &state) {
                             bool isAvailable = (pointCost != -1 && attributeId != -1 && rewardId != -1);
                             bool isRedeeming = state.network.isCurrentlyProcessingOrPending();
                             bool isCurrentMechanic =
-                                    state.network.getCurrentRedeemMechanicVideogameId() == m.id_modifiable_mechanic_videogame;
+                                    state.network.getCurrentRedeemMechanicVideogameId() == m.
+                                    id_modifiable_mechanic_videogame;
 
                             if (!isAvailable || !serverOnline) {
                                 // Botón deshabilitado si no está disponible o el servidor está offline

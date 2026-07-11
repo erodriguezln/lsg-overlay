@@ -154,8 +154,6 @@ public:
 
     std::vector<PlayerAttributePointsItem> getPlayerAttributePoints() const;
 
-    void printDebug() const;
-
     // ID de la mecanica en proceso de canje
     // Es atomic para que la UI pueda leerlo sin bloqueo
     std::atomic<int> activeRedeemMechanicVideogameId{-1};

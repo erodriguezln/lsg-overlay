@@ -1,6 +1,4 @@
-//
-// Created by Mathw on 24/6/2026.
-//
+
 
 #include "network.h"
 #include <iostream>
@@ -417,22 +415,6 @@ std::vector<PlayerAttributePointsItem> Network::getPlayerAttributePoints() const
 
 bool Network::getIsVideogameServerOnline() const {
     return isVideogameServerOnline.load();
-}
-
-void Network::printDebug() const {
-    std::lock_guard<std::mutex> lock(backendDataMutex);
-    std::cout << "--- Mechanics Info (Count: " << mechanics.size() << ") ---\n";
-    for (const auto &mechanic: mechanics) {
-        std::cout << "ID: " << mechanic.id_modifiable_mechanic << '\n';
-        std::cout << "Name: " << mechanic.modifiable_mechanic_name << '\n';
-        std::cout << "Description: " << (mechanic.modifiable_mechanic_description
-                                             ? *mechanic.modifiable_mechanic_description
-                                             : "null") << '\n';
-        std::cout << "Type: " << (mechanic.modifiable_mechanic_type ? *mechanic.modifiable_mechanic_type : "null") <<
-                '\n';
-        std::cout << "Options: " << mechanic.options.dump(4) << '\n';
-        std::cout << "------------------------\n";
-    }
 }
 
 void Network::periodicQueryLoop() {
