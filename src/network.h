@@ -123,7 +123,7 @@ public:
     // GET /players/:id/attributes/points - obtiene el balance de puntos por atributo
     bool fetchPlayerAttributes();
 
-    // GET /health (servidor del videojuego) - actualiza isVideogameServerOnline
+    // GET /health (servidor del videojuego) - actualiza isGameAndServerReady e isModServerReachable
     bool fetchVideogameServerHealth();
 
     // GET /videogames/:id - obtiene los datos del videojuego activo
@@ -143,7 +143,11 @@ public:
     int getCurrentRedeemMechanicVideogameId() const;
 
     // true si el servidor del videojuego respondió correctamente en el último health check
-    bool getIsVideogameServerOnline() const;
+    // y el juego tiene una partida activa (game_ready == true)
+    bool getIsGameAndServerReady() const;
+
+    // true si el servidor HTTP del mod responde (independiente de game_ready)
+    bool getIsModServerReachable() const;
 
     // Getters thread-safe adquieren el mutex internamente y retornan una copia del dato
     PlayerResponse getPlayer() const;
@@ -168,7 +172,9 @@ private:
     httplib::Client videogameServerClient;
 
     // Permite leer un solo valor desde cualquier hilo sin mutex
-    std::atomic<bool> isVideogameServerOnline{false};
+    std::atomic<bool> isGameAndServerReady{false};
+    // true si el servidor HTTP del mod responde en /health (HTTP 200), aunque game_ready sea false
+    std::atomic<bool> isModServerReachable{false};
 
     // Datos leidos por la UI y actualizados por el hilo de consultas
     // Deben accederse bajo mutex o mediante getters

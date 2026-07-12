@@ -1,5 +1,3 @@
-
-
 #include "network.h"
 #include <iostream>
 #include <optional>
@@ -201,32 +199,47 @@ bool Network::fetchVideogameServerHealth() {
         std::cerr << "Failed to fetch videogame server health: "
                 << (response ? std::to_string(response->status) : "No response from server")
                 << std::endl;
-        // Marca el servidor del videojuego como offline
-        isVideogameServerOnline.store(false);
+        isModServerReachable.store(false);
+        isGameAndServerReady.store(false);
         return false;
     }
 
-    // Marca el servidor como online
-    isVideogameServerOnline.store(true);
-    return true;
+    isModServerReachable.store(true);
+
+    try {
+        const auto json = nlohmann::json::parse(response->body);
+        // El mod mientas carga puede responder 200 con game_ready: false
+        const bool gameReady = json.value("game_ready", false);
+        isGameAndServerReady.store(gameReady);
+        return gameReady;
+    } catch (const std::exception &e) {
+        std::cerr << "Failed to parse health response: " << e.what() << std::endl;
+        isGameAndServerReady.store(false);
+        return false;
+    }
 }
 
 bool Network::postReward(int rewardId) {
     nlohmann::json payload;
     payload["reward_id"] = rewardId;
 
-    // Cliente local descartable
+    // Cliente local descartable para no compartir sockets entre hilos
     httplib::Client localVideogameServerClient("http://localhost:7878");
     localVideogameServerClient.set_connection_timeout(2);
-    localVideogameServerClient.set_read_timeout(2);
+
+    // Alinear con el timeout del servidor en el mod, de momento es 5 asi que lo dejamos en 6
+    localVideogameServerClient.set_read_timeout(6);
 
     // Envia la mecanica elegida por POST al videojuego o mod para materializarla
     auto response = localVideogameServerClient.Post("/reward", payload.dump(), "application/json");
 
     if (!response || response->status != 200) {
         std::cerr << "Failed to send reward. ID: " << rewardId
-                << ". Status: " << (response ? std::to_string(response->status) : "No response")
-                << std::endl;
+                << ". Status: " << (response ? std::to_string(response->status) : "No response");
+        if (response && !response->body.empty()) {
+            std::cerr << ". Body: " << response->body;
+        }
+        std::cerr << std::endl;
         return false;
     }
 
@@ -413,8 +426,12 @@ std::vector<PlayerAttributePointsItem> Network::getPlayerAttributePoints() const
     return playerAttributePoints;
 }
 
-bool Network::getIsVideogameServerOnline() const {
-    return isVideogameServerOnline.load();
+bool Network::getIsGameAndServerReady() const {
+    return isGameAndServerReady.load();
+}
+
+bool Network::getIsModServerReachable() const {
+    return isModServerReachable.load();
 }
 
 void Network::periodicQueryLoop() {
@@ -449,7 +466,6 @@ void Network::redeemLoop() {
     while (isRedeemThreadRunning.load()) {
         RedeemTask redeemRequest;
         {
-
             std::unique_lock<std::mutex> lock(redeemRequestMutex);
             // Espera hasta que haya un canje pendiente o se pida detener el hilo
             redeemRequestCv.wait(lock, [this] {

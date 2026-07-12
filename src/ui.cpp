@@ -198,17 +198,33 @@ void UI_BuildWindows(AppState &state) {
         ImGui::Begin("Redeemable mechanics", nullptr,
                      ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove);
 
-        // // Header row
+        // Header row
         char leftText[64];
         std::snprintf(leftText, sizeof(leftText), "Total mechanics: %zu", mechanics.size());
         ImGui::TextColored(ImVec4(0.45f, 0.55f, 0.65f, 1.0f), "%s", leftText);
         ImGui::SameLine();
 
-        // Server status
-        bool serverOnline = state.network.getIsVideogameServerOnline();
-        const char *statusText = serverOnline ? "Videogame Server Online" : "Videogame Server Offline";
-        ImVec4 statusColor = serverOnline ? ImVec4(0.0f, 1.0f, 0.5f, 1.0f) : ImVec4(1.0f, 0.3f, 0.3f, 1.0f);
-        ImU32 dotColor = serverOnline ? IM_COL32(0, 255, 128, 255) : IM_COL32(255, 64, 64, 255);
+        // Server status tiene tres estados
+        bool gameAndServerReady = state.network.getIsGameAndServerReady();
+        bool modReachable = state.network.getIsModServerReachable();
+
+        const char *statusText;
+        ImVec4 statusColor;
+        ImU32 dotColor;
+
+        if (gameAndServerReady) {
+            statusText = "Game Ready";
+            statusColor = ImVec4(0.0f, 1.0f, 0.5f, 1.0f);
+            dotColor = IM_COL32(0, 255, 128, 255);
+        } else if (modReachable) {
+            statusText = "Game Loading";
+            statusColor = ImVec4(1.0f, 0.85f, 0.0f, 1.0f);
+            dotColor = IM_COL32(255, 215, 0, 255);
+        } else {
+            statusText = "Server Offline";
+            statusColor = ImVec4(1.0f, 0.3f, 0.3f, 1.0f);
+            dotColor = IM_COL32(255, 64, 64, 255);
+        }
 
         float statusWidth = ImGui::CalcTextSize(statusText).x + 35.0f * scale;
         ImGui::SetCursorPosX(rightPanelWidth - statusWidth);
@@ -341,7 +357,7 @@ void UI_BuildWindows(AppState &state) {
                                     state.network.getCurrentRedeemMechanicVideogameId() == m.
                                     id_modifiable_mechanic_videogame;
 
-                            if (!isAvailable || !serverOnline) {
+                            if (!isAvailable || !gameAndServerReady) {
                                 // Botón deshabilitado si no está disponible o el servidor está offline
                                 ImGui::BeginDisabled();
 
@@ -350,10 +366,14 @@ void UI_BuildWindows(AppState &state) {
 
                                 ImGui::EndDisabled();
 
-                                // Tooltip indicativo para avisar si el servidor está caído
-                                if (isAvailable && !serverOnline && ImGui::IsItemHovered(
+                                // Tooltip indicativo para avisar si el servidor está caído o cargando
+                                if (isAvailable && !gameAndServerReady && ImGui::IsItemHovered(
                                         ImGuiHoveredFlags_AllowWhenDisabled)) {
-                                    ImGui::SetTooltip("Videogame server disconnected");
+                                    if (modReachable) {
+                                        ImGui::SetTooltip("Game is loading or not in a world");
+                                    } else {
+                                        ImGui::SetTooltip("Videogame server disconnected");
+                                    }
                                 }
                             } else if (isRedeeming) {
                                 ImGui::BeginDisabled();
