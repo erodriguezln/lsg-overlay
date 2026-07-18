@@ -10,6 +10,9 @@ struct AppState {
     SDL_Window *window = nullptr;
     SDL_Renderer *renderer = nullptr;
 
+    std::atomic<bool> shutdownRequested{false};
+    std::thread stdinLoop;
+
     Network network;
 
     Overlay overlay;
@@ -17,5 +20,4 @@ struct AppState {
     // Constructor que inicializa el objeto Network con el player_id y videogame_id proporcionados
     AppState(int playerId, int videogameId) : network(playerId, videogameId) {
     }
-
 };

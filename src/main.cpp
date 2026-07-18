@@ -11,6 +11,17 @@
 
 static constexpr int WIDTH = 1280, HEIGHT = 800;
 
+void stdinReaderThread(std::atomic<bool> &shutdown) {
+    std::string cinLine;
+    while (std::getline(std::cin, cinLine)) {
+        if (cinLine == "shutdown") {
+            shutdown.store(true);
+            break;
+        }
+    }
+    shutdown.store(true);
+}
+
 
 SDL_AppResult SDL_AppInit(void **appstate, int argc, char **argv) {
     SDL_SetAppMetadata(APP_NAME, "1.0", "com.example.sdl3-boilerplate");
@@ -35,6 +46,7 @@ SDL_AppResult SDL_AppInit(void **appstate, int argc, char **argv) {
         return SDL_APP_FAILURE;
     }
 
+
     if (!SDL_Init(SDL_INIT_VIDEO | SDL_INIT_GAMEPAD)) {
         SDL_Log("Couldn't initialize SDL: %s", SDL_GetError());
         return SDL_APP_FAILURE;
@@ -43,6 +55,7 @@ SDL_AppResult SDL_AppInit(void **appstate, int argc, char **argv) {
     auto *state = new AppState(playerId, videogameId);
 
     *appstate = state;
+
 
     // Window & Renderer
     SDL_WindowFlags window_flags =
@@ -84,6 +97,9 @@ SDL_AppResult SDL_AppInit(void **appstate, int argc, char **argv) {
 
     UI_Init(state->window, state->renderer);
 
+    state->stdinLoop = std::thread(stdinReaderThread, std::ref(state->shutdownRequested));
+
+
     return SDL_APP_CONTINUE;
 }
 
@@ -105,6 +121,10 @@ SDL_AppResult SDL_AppEvent(void *appstate, SDL_Event *event) {
 // Called once per frame: update game logic + render everything.
 SDL_AppResult SDL_AppIterate(void *appstate) {
     auto *state = static_cast<AppState *>(appstate);
+
+    if (state->shutdownRequested.load()) {
+        return SDL_APP_SUCCESS;
+    }
 
     // TODO: Podria encapsular esto
     static bool f3WasDown = false;
@@ -149,6 +169,9 @@ void SDL_AppQuit(void *appstate, SDL_AppResult result) {
     UI_Shutdown();
 
     if (auto *state = static_cast<AppState *>(appstate)) {
+        if (state->stdinLoop.joinable()) {
+            state->stdinLoop.join();
+        }
         if (state->renderer) {
             SDL_DestroyRenderer(state->renderer);
         }
