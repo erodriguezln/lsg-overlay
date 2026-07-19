@@ -11,17 +11,42 @@
 
 static constexpr int WIDTH = 1280, HEIGHT = 800;
 
-void stdinReaderThread(std::atomic<bool> &shutdown) {
-    std::string cinLine;
-    while (std::getline(std::cin, cinLine)) {
-        if (cinLine == "shutdown") {
-            shutdown.store(true);
-            break;
-        }
-    }
-    shutdown.store(true);
-}
+bool shouldShutdownFromStdin() {
+    const HANDLE stdinHandle = GetStdHandle(STD_INPUT_HANDLE);
 
+    if (!stdinHandle || stdinHandle == INVALID_HANDLE_VALUE) {
+        SDL_Log("Failed to get stdin handle.");
+        return false;
+    }
+
+    DWORD available = 0;
+
+    // Verifica si hay datos disponibles en el pipe de entrada estándar
+    if (!PeekNamedPipe(stdinHandle, nullptr, 0, nullptr, &available, nullptr)) {
+        // Error al verificar el pipe, probablemente se cerró
+        return GetLastError() == ERROR_BROKEN_PIPE;
+    }
+
+    // Si no hay datos disponibles, pero el pipe sigue abierto, no se hace nada
+    if (available == 0) {
+        return false;
+    }
+
+    char buffer[128]{};
+    DWORD bytesRead = 0;
+
+    // Lee el comando del pipe de entrada estándar
+    if (!ReadFile(
+        stdinHandle, buffer, sizeof(buffer) - 1, &bytesRead, nullptr)) {
+        // Error al leer del pipe
+        return GetLastError() == ERROR_BROKEN_PIPE;
+    }
+
+    // Se escribe en el string buffer el comando recibido, sin incluir el caracter null al final
+    const std::string command(buffer, bytesRead);
+
+    return command == "shutdown\n" || command == "shutdown\r\n";
+}
 
 SDL_AppResult SDL_AppInit(void **appstate, int argc, char **argv) {
     SDL_SetAppMetadata(APP_NAME, "1.0", "com.example.sdl3-boilerplate");
@@ -97,9 +122,6 @@ SDL_AppResult SDL_AppInit(void **appstate, int argc, char **argv) {
 
     UI_Init(state->window, state->renderer);
 
-    state->stdinLoop = std::thread(stdinReaderThread, std::ref(state->shutdownRequested));
-
-
     return SDL_APP_CONTINUE;
 }
 
@@ -122,7 +144,7 @@ SDL_AppResult SDL_AppEvent(void *appstate, SDL_Event *event) {
 SDL_AppResult SDL_AppIterate(void *appstate) {
     auto *state = static_cast<AppState *>(appstate);
 
-    if (state->shutdownRequested.load()) {
+    if (shouldShutdownFromStdin()) {
         return SDL_APP_SUCCESS;
     }
 
@@ -169,9 +191,6 @@ void SDL_AppQuit(void *appstate, SDL_AppResult result) {
     UI_Shutdown();
 
     if (auto *state = static_cast<AppState *>(appstate)) {
-        if (state->stdinLoop.joinable()) {
-            state->stdinLoop.join();
-        }
         if (state->renderer) {
             SDL_DestroyRenderer(state->renderer);
         }

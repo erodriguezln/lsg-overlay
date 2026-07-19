@@ -10,9 +10,6 @@ struct AppState {
     SDL_Window *window = nullptr;
     SDL_Renderer *renderer = nullptr;
 
-    std::atomic<bool> shutdownRequested{false};
-    std::thread stdinLoop;
-
     Network network;
 
     Overlay overlay;
