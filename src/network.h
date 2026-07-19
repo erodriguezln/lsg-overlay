@@ -43,20 +43,15 @@ struct VideogameMechanic {
     std::optional<std::string> modifiable_mechanic_type; // "buff", "nerf", "speed", etc.
 };
 
-struct PlayerAttributePointsItem {
-    int id_players;
-    std::string player_name;
-    std::string player_email;
-    int id_attributes;
-    std::optional<std::string> attribute_name;
-    double balance_ledger;
-    double snapshot_points;
-    double diff_ledger_minus_snapshot;
-};
-
 struct PlayerPointsBalanceItem {
     int id_players;
     int id_point_dimension;
+    std::optional<std::string> dimension_code;
+    std::optional<std::string> dimension_name;
+    std::optional<int> id_attributes;
+    std::optional<std::string> attribute_name;
+    std::optional<int> id_subattributes;
+    std::optional<std::string> subattribute_name;
     double balance;
 };
 
@@ -120,8 +115,8 @@ public:
     // GET /videogames/:id/mechanics - obtiene las mecánicas disponibles para el juego activo
     bool fetchMechanics();
 
-    // GET /players/:id/attributes/points - obtiene el balance de puntos por atributo
-    bool fetchPlayerAttributes();
+    // GET /players/:id/points/balance - obtiene el balance por dimensión de puntos
+    bool fetchPlayerPointsBalance();
 
     // GET /health (servidor del videojuego) - actualiza isGameAndServerReady e isModServerReachable
     bool fetchVideogameServerHealth();
@@ -156,7 +151,7 @@ public:
 
     std::vector<VideogameMechanic> getMechanics() const;
 
-    std::vector<PlayerAttributePointsItem> getPlayerAttributePoints() const;
+    std::vector<PlayerPointsBalanceItem> getPlayerPointsBalance() const;
 
     // ID de la mecanica en proceso de canje
     // Es atomic para que la UI pueda leerlo sin bloqueo
@@ -180,13 +175,13 @@ private:
     // Deben accederse bajo mutex o mediante getters
     std::vector<VideogameMechanic> mechanics;
     PlayerResponse player;
-    std::vector<PlayerAttributePointsItem> playerAttributePoints;
+    std::vector<PlayerPointsBalanceItem> playerPointsBalance;
     Videogame videogame;
 
     // Hilo de consultas periodicas
     void periodicQueryLoop();
 
-    mutable std::mutex backendDataMutex; // Protege player videogame mechanics y playerAttributePoints
+    mutable std::mutex backendDataMutex; // Protege player, videogame, mechanics y playerPointsBalance
     std::mutex periodicQueryWakeMutex;
     std::condition_variable periodicQueryWakeCv; // Permite dormir y despertar al hilo
     std::thread periodicQueryThread;

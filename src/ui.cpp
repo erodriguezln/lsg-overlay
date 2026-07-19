@@ -5,6 +5,8 @@
 #include "imgui_impl_sdl3.h"
 #include "imgui_impl_sdlrenderer3.h"
 
+#include <algorithm>
+
 static void RenderAttribute(const char *name, double value, double max_val, float width) {
     ImGui::Text("%s", name);
 
@@ -20,12 +22,47 @@ static void RenderAttribute(const char *name, double value, double max_val, floa
     ImGui::Spacing();
 }
 
-static std::string attributeIdToName(int attributeId, const std::vector<PlayerAttributePointsItem> &playerAttributes) {
-    for (const auto &attr: playerAttributes) {
-        if (attr.id_attributes == attributeId) {
-            return attr.attribute_name
-                       ? *attr.attribute_name
-                       : "Unknown attribute";
+struct AttributeBalance {
+    int id;
+    std::string name;
+    double balance;
+};
+
+// Agrega los balances de atributos con el mismo id en un solo objeto AttributeBalance
+static std::vector<AttributeBalance> aggregateAttributeBalances(
+    const std::vector<PlayerPointsBalanceItem> &pointsBalance) {
+    std::vector<AttributeBalance> attributes;
+
+    for (const auto &item: pointsBalance) {
+        if (!item.id_attributes) {
+            continue;
+        }
+
+        const auto existingAttribute = std::find_if(
+            attributes.begin(), attributes.end(),
+            [&item](const AttributeBalance &attribute) {
+                return attribute.id == *item.id_attributes;
+            });
+
+        if (existingAttribute != attributes.end()) {
+            existingAttribute->balance += item.balance;
+            continue;
+        }
+
+        attributes.push_back({
+            *item.id_attributes,
+            item.attribute_name.value_or("Unknown attribute"),
+            item.balance
+        });
+    }
+
+    return attributes;
+}
+
+static std::string attributeIdToName(int attributeId, const std::vector<AttributeBalance> &attributes) {
+    for (const auto &attribute: attributes) {
+        if (attribute.id == attributeId) {
+            return attribute.name;
         }
     }
     return "Unknown attribute";
@@ -115,7 +152,8 @@ void UI_BeginFrame() {
 
 void UI_BuildWindows(AppState &state) {
     const auto player = state.network.getPlayer();
-    const auto playerAttributes = state.network.getPlayerAttributePoints();
+    const auto pointsBalance = state.network.getPlayerPointsBalance();
+    const auto playerAttributes = aggregateAttributeBalances(pointsBalance);
     const auto mechanics = state.network.getMechanics();
     const auto videogame = state.network.getVideogame();
 
@@ -177,11 +215,8 @@ void UI_BuildWindows(AppState &state) {
         if (playerAttributes.empty()) {
             ImGui::Text("Loading attributes...");
         } else {
-            for (const auto &attr: playerAttributes) {
-                // Al ser optional puede ser null, en ese caso se muestra "Atributo desconocido" y se evita crash
-                const char *attributeName = attr.attribute_name ? attr.attribute_name->c_str() : "Atributo desconocido";
-
-                RenderAttribute(attributeName, attr.balance_ledger, 2000.0, leftPanelWidth);
+            for (const auto &attribute: playerAttributes) {
+                RenderAttribute(attribute.name.c_str(), attribute.balance, 2000.0, leftPanelWidth);
             }
         }
 

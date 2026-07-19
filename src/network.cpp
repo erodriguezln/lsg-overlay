@@ -142,12 +142,12 @@ bool Network::fetchMechanics() {
     }
 }
 
-bool Network::fetchPlayerAttributes() {
-    std::string path = "/players/" + std::to_string(playerId) + "/attributes/points";
+bool Network::fetchPlayerPointsBalance() {
+    const std::string path = "/players/" + std::to_string(playerId) + "/points/balance";
     auto response = client.Get(path);
 
     if (!response || response->status != 200) {
-        std::cerr << "Failed to fetch player attributes: "
+        std::cerr << "Failed to fetch player points balance: "
                 << (response ? std::to_string(response->status) : "No response from server")
                 << " for path: " << path << std::endl;
         return false;
@@ -155,39 +155,49 @@ bool Network::fetchPlayerAttributes() {
     try {
         auto json = nlohmann::json::parse(response->body);
 
-        std::vector<PlayerAttributePointsItem> fetchedItem;
+        std::vector<PlayerPointsBalanceItem> fetchedItems;
 
         for (const auto &item_json: json) {
-            PlayerAttributePointsItem item;
+            PlayerPointsBalanceItem item;
 
             // Usa valores por defecto para evitar errores por claves faltantes
             item.id_players = item_json.value("id_players", 0);
-            item.player_name = item_json.value("player_name", "");
-            item.player_email = item_json.value("player_email", "");
-            item.id_attributes = item_json.value("id_attributes", 0);
+            item.id_point_dimension = item_json.value("id_point_dimension", 0);
 
-            if (item_json.contains("attribute_name") && !item_json["attribute_name"].is_null()) {
-                item.attribute_name = item_json["attribute_name"].get<std::string>();
-            } else {
-                item.attribute_name = std::nullopt;
-            }
+            const auto readOptionalString = [&item_json](const char *key) -> std::optional<std::string> {
+                if (item_json.contains(key) && !item_json[key].is_null()) {
+                    return item_json[key].get<std::string>();
+                }
+                return std::nullopt;
+            };
 
-            item.balance_ledger = item_json.value("balance_ledger", 0.0);
-            item.snapshot_points = item_json.value("snapshot_points", 0.0);
-            item.diff_ledger_minus_snapshot = item_json.value("diff_ledger_minus_snapshot", 0.0);
+            const auto readOptionalInt = [&item_json](const char *key) -> std::optional<int> {
+                if (item_json.contains(key) && !item_json[key].is_null()) {
+                    return item_json[key].get<int>();
+                }
+                return std::nullopt;
+            };
 
-            fetchedItem.push_back(item);
+            item.dimension_code = readOptionalString("dimension_code");
+            item.dimension_name = readOptionalString("dimension_name");
+            item.id_attributes = readOptionalInt("id_attributes");
+            item.attribute_name = readOptionalString("attribute_name");
+            item.id_subattributes = readOptionalInt("id_subattributes");
+            item.subattribute_name = readOptionalString("subattribute_name");
+            item.balance = item_json.value("balance", 0.0);
+
+            fetchedItems.push_back(std::move(item));
         }
 
-        // Actualiza el balance de atributos del jugador bajo mutex
+        // Actualiza el balance del jugador bajo mutex
         {
             std::lock_guard<std::mutex> lock(backendDataMutex);
-            playerAttributePoints = std::move(fetchedItem);
+            playerPointsBalance = std::move(fetchedItems);
         }
 
         return true;
     } catch (const std::exception &e) {
-        std::cerr << "Failed to parse player attributes: " << e.what() << std::endl;
+        std::cerr << "Failed to parse player points balance: " << e.what() << std::endl;
         return false;
     }
 }
@@ -421,9 +431,9 @@ std::vector<VideogameMechanic> Network::getMechanics() const {
     return mechanics;
 }
 
-std::vector<PlayerAttributePointsItem> Network::getPlayerAttributePoints() const {
+std::vector<PlayerPointsBalanceItem> Network::getPlayerPointsBalance() const {
     std::lock_guard<std::mutex> lock(backendDataMutex);
-    return playerAttributePoints;
+    return playerPointsBalance;
 }
 
 bool Network::getIsGameAndServerReady() const {
@@ -449,7 +459,7 @@ void Network::periodicQueryLoop() {
 
         // Datos que pueden cambiar en cada ciclo
         fetchMechanics();
-        fetchPlayerAttributes();
+        fetchPlayerPointsBalance();
         fetchVideogameServerHealth();
 
         // Espera cinco segundos o despierta antes si hay cierre o refresh forzado
