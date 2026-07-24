@@ -387,13 +387,23 @@ void UI_BuildWindows(AppState &state) {
                             }
 
                             bool isAvailable = (pointCost != -1 && attributeId != -1 && rewardId != -1);
+                            const auto attributeBalance = std::find_if(
+                                playerAttributes.begin(), playerAttributes.end(),
+                                [attributeId](const AttributeBalance &attribute) {
+                                    return attribute.id == attributeId;
+                                });
+                            const double availablePoints = attributeBalance != playerAttributes.end()
+                                                               ? attributeBalance->balance
+                                                               : 0.0;
+                            const bool hasSufficientBalance = isAvailable &&
+                                                              availablePoints >= static_cast<double>(pointCost);
                             bool isRedeeming = state.network.isCurrentlyProcessingOrPending();
                             bool isCurrentMechanic =
                                     state.network.getCurrentRedeemMechanicVideogameId() == m.
                                     id_modifiable_mechanic_videogame;
 
-                            if (!isAvailable || !gameAndServerReady) {
-                                // Botón deshabilitado si no está disponible o el servidor está offline
+                            if (!isAvailable || !gameAndServerReady || !hasSufficientBalance) {
+                                // Botón deshabilitado si faltan datos, el juego no está listo o el saldo es insuficiente
                                 ImGui::BeginDisabled();
 
 
@@ -401,13 +411,18 @@ void UI_BuildWindows(AppState &state) {
 
                                 ImGui::EndDisabled();
 
-                                // Tooltip indicativo para avisar si el servidor está caído o cargando
-                                if (isAvailable && !gameAndServerReady && ImGui::IsItemHovered(
-                                        ImGuiHoveredFlags_AllowWhenDisabled)) {
-                                    if (modReachable) {
-                                        ImGui::SetTooltip("Game is loading or not in a world");
+                                if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled)) {
+                                    if (!isAvailable) {
+                                        ImGui::SetTooltip("Mechanic configuration is incomplete.");
+                                    } else if (!gameAndServerReady) {
+                                        if (modReachable) {
+                                            ImGui::SetTooltip("Game is loading or not in a world");
+                                        } else {
+                                            ImGui::SetTooltip("Videogame server disconnected");
+                                        }
                                     } else {
-                                        ImGui::SetTooltip("Videogame server disconnected");
+                                        ImGui::SetTooltip("Insufficient points: %.2f available, %d required.",
+                                                          availablePoints, pointCost);
                                     }
                                 }
                             } else if (isRedeeming) {
