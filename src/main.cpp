@@ -116,7 +116,7 @@ SDL_AppResult SDL_AppInit(void **appstate, int argc, char **argv) {
         return SDL_APP_FAILURE;
     }
 
-    // SDL_SetRenderVSync(state->renderer, 1);
+    SDL_SetRenderVSync(state->renderer, 1);
     // SDL_SetWindowPosition(state->window, SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED);
     // SDL_ShowWindow(state->window);
 
