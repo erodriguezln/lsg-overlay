@@ -401,9 +401,13 @@ void UI_BuildWindows(AppState &state) {
                             bool isCurrentMechanic =
                                     state.network.getCurrentRedeemMechanicVideogameId() == m.
                                     id_modifiable_mechanic_videogame;
+                            bool remoteBackendReady = state.network.getIsRemoteBackendReady();
 
-                            if (!isAvailable || !gameAndServerReady || !hasSufficientBalance) {
-                                // Botón deshabilitado si faltan datos, el juego no está listo o el saldo es insuficiente
+                            const bool canRedeem = isAvailable && gameAndServerReady &&
+                                                   remoteBackendReady && hasSufficientBalance;
+
+                            if (!canRedeem) {
+                                // Botón deshabilitado si faltan datos, alguno de los servicios no está listo o el saldo es insuficiente
                                 ImGui::BeginDisabled();
 
 
@@ -414,6 +418,8 @@ void UI_BuildWindows(AppState &state) {
                                 if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled)) {
                                     if (!isAvailable) {
                                         ImGui::SetTooltip("Mechanic configuration is incomplete.");
+                                    } else if (!remoteBackendReady) {
+                                        ImGui::SetTooltip("LSG Core is offline.");
                                     } else if (!gameAndServerReady) {
                                         if (modReachable) {
                                             ImGui::SetTooltip("Game is loading or not in a world");

@@ -121,6 +121,9 @@ public:
     // GET /health (servidor del videojuego) - actualiza isGameAndServerReady e isModServerReachable
     bool fetchVideogameServerHealth();
 
+    // GET /health (backend local de LSG Client) - actualiza isRemoteBackendReady
+    bool fetchClientHealth();
+
     // GET /videogames/:id - obtiene los datos del videojuego activo
     bool fetchVideogame();
 
@@ -143,6 +146,8 @@ public:
 
     // true si el servidor HTTP del mod responde (independiente de game_ready)
     bool getIsModServerReachable() const;
+
+    bool getIsRemoteBackendReady() const;
 
     // Getters thread-safe adquieren el mutex internamente y retornan una copia del dato
     PlayerResponse getPlayer() const;
@@ -170,6 +175,8 @@ private:
     std::atomic<bool> isGameAndServerReady{false};
     // true si el servidor HTTP del mod responde en /health (HTTP 200), aunque game_ready sea false
     std::atomic<bool> isModServerReachable{false};
+    // true si el backend local responde en /health y services.core.status == "ok"
+    std::atomic<bool> isRemoteBackendReady{false};
 
     // Datos leidos por la UI y actualizados por el hilo de consultas
     // Deben accederse bajo mutex o mediante getters

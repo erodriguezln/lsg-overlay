@@ -229,6 +229,29 @@ bool Network::fetchVideogameServerHealth() {
     }
 }
 
+bool Network::fetchClientHealth() {
+    auto response = client.Get("/health");
+
+    if (!response || response->status != 200) {
+        isRemoteBackendReady.store(false);
+        return false;
+    }
+
+    try {
+        const auto json = nlohmann::json::parse(response->body);
+        bool coreOk = false;
+        if (json.contains("services") && json["services"].contains("core")) {
+            coreOk = (json["services"]["core"].value("status", "") == "ok");
+        }
+        isRemoteBackendReady.store(coreOk);
+        return coreOk;
+    } catch (const std::exception &e) {
+        std::cerr << "Failed to parse client health response: " << e.what() << std::endl;
+        isRemoteBackendReady.store(false);
+        return false;
+    }
+}
+
 bool Network::postReward(int rewardId) {
     nlohmann::json payload;
     payload["reward_id"] = rewardId;
@@ -257,6 +280,11 @@ bool Network::postReward(int rewardId) {
 }
 
 bool Network::redeem(int mechanicVideogameId, int attributeId, int amount, int rewardId) {
+    if (!isRemoteBackendReady.load()) {
+        std::cerr << "Redeem rejected: LSG Core is offline." << std::endl;
+        return false;
+    }
+
     // Protege la lectura de redeemState y la escritura de pendingRedeemTask
     std::lock_guard<std::mutex> lock(redeemRequestMutex);
     if (redeemState.load() == RedeemState::Processing || redeemState.load() == RedeemState::Pending) {
@@ -444,6 +472,10 @@ bool Network::getIsModServerReachable() const {
     return isModServerReachable.load();
 }
 
+bool Network::getIsRemoteBackendReady() const {
+    return isRemoteBackendReady.load();
+}
+
 void Network::periodicQueryLoop() {
     bool playerLoaded = false;
     bool videogameLoaded = false;
@@ -461,6 +493,7 @@ void Network::periodicQueryLoop() {
         fetchMechanics();
         fetchPlayerPointsBalance();
         fetchVideogameServerHealth();
+        fetchClientHealth();
 
         // Espera cinco segundos o despierta antes si hay cierre o refresh forzado
         std::unique_lock<std::mutex> lock(periodicQueryWakeMutex);
