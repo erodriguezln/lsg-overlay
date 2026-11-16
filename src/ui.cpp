@@ -162,11 +162,10 @@ void UI_BuildWindows(AppState &state) {
         const float scale = ImGui::GetIO().FontGlobalScale;
 
         const float padding = 24.0f * scale;
-        const float bottomH = 40.0f * scale;
 
         const float leftPanelWidth = 380.0f * scale;
-        const float panelsY = padding;
-        const float panelsH = displaySize.y - panelsY - padding - bottomH;
+        const float panelsH = displaySize.y - 2.0f * padding - 40.0f * scale;
+        const float panelsY = (displaySize.y - panelsH) / 2.0f;
 
         // Session Panel (Header Panel)
         const float sessionPanelH = 120.0f * scale;
