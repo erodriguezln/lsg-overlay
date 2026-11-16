@@ -1,69 +1,52 @@
 # lsg-overlay
 
-Aplicación de overlay transparente e interactivo para clientes de videojuegos Win32, construida con **C++20**, **SDL3** y **Dear ImGui**.
-
-El overlay se acopla como una ventana hija de una ventana Win32 objetivo y se comunica con un backend web utilizando `cpp-httplib` y `nlohmann-json` para la obtención de métricas de juego en tiempo real.
+Overlay para videojuegos en Windows, construido con **C++20**, **SDL3** y **Dear ImGui**. Se acopla a la ventana del videojuego para mostrar métricas y canjear mecánicas mediante servicios HTTP locales.
 
 ## Requisitos
 
-- **CMake** ≥ 3.30
-- Compilador con soporte para **C++20** (MSVC / Visual Studio 2022 o superior)
-- **vcpkg** instalado en el sistema.
-- Variable de entorno **`VCPKG_ROOT`** configurada apuntando al directorio de instalación de vcpkg.
-
-## Gestión de Dependencias
-
-El proyecto utiliza **vcpkg** en **Manifest Mode** para resolver automáticamente las librerías a través de los archivos:
-- `vcpkg.json`: Declara las librerías necesarias y habilita los bindings de SDL3 para Dear ImGui.
-- `vcpkg-configuration.json`: Fija la versión del registro (baseline) para asegurar compilaciones reproducibles.
+- Windows
+- Visual Studio 2026 (C++)
+- CMake ≥ 4.2
+- vcpkg (`VCPKG_ROOT` configurada)
 
 ## Compilación
 
-El proyecto utiliza **CMake Presets** para simplificar la compilación.
+Desde la raíz del repositorio. vcpkg instala las dependencias automáticamente.
 
-### 1. Configurar el proyecto
-Ejecuta la configuración para generar los archivos de construcción (vcpkg descargará y compilará las dependencias en este paso):
-
-```bash
-# Configuración en modo Debug
-cmake --preset windows-msvc-debug
-
-# Configuración en modo Release
-cmake --preset windows-msvc-release
-```
-
-### 2. Compilar
-```bash
-# Compilar en modo Debug
-cmake --build --preset windows-msvc-debug
-
-# Compilar en modo Release dinámico
-cmake --build --preset windows-msvc-release
-```
-
-La compilación dinámica genera el ejecutable y sus DLLs asociadas dentro de `build/msvc-release/Release/`.
-
-### Release estático (un solo ejecutable)
-
-Este preset enlaza estáticamente SDL3, Brotli y el runtime de MSVC:
-
-```bash
+```powershell
 cmake --preset windows-msvc-release-static
 cmake --build --preset windows-msvc-release-static
 cmake --build --preset windows-msvc-release-static-install
 ```
 
-El ejecutable autocontenido se genera en `build/msvc-release-static/Release/lsg-overlay.exe` y el preset de
-instalación lo copia, sin DLLs adicionales, a `C:/Dev/tesis/lsg-client/src/shared/`.
+Salida: `build/msvc-release-static/Release/lsg-overlay.exe`.
+
+La instalación copia el ejecutable a `C:/Dev/tesis/lsg-client/src/shared/`. Para otra ruta, modifica `CMAKE_INSTALL_PREFIX` en `CMakeLists.txt` antes de configurar.
+
+Para depurar:
+
+```powershell
+cmake --preset windows-msvc-debug
+cmake --build --preset windows-msvc-debug
+```
 
 ## Ejecución
 
-El programa debe ser lanzado desde la consola o como un proceso hijo pasando los siguientes tres parámetros:
+`lsg-client` inicia el overlay automáticamente. Para probarlo manualmente, mantén el cliente y el videojuego abiertos. El cliente proporciona los datos.
 
-```bash
-lsg-overlay.exe <playerId> <targetHWND> <videogameId>
+```powershell
+.\build\msvc-release-static\Release\lsg-overlay.exe <playerId> <targetHWND> <videogameId>
+
+# playerId: id del jugador en el backend de lsg
+# videogameId: id del videojuego en el backend de lsg
+# targetHWND: HWND válido de la ventana del videojuego en ejecución
+
+# Ejemplo para Stardew Valley con IDs de ejemplo
+.\build\msvc-release-static\Release\lsg-overlay.exe 1 2493544 1
 ```
 
-- **`playerId`**: ID del jugador para consultar las estadísticas.
-- **`targetHWND`**: El manejador de ventana (HWND en formato numérico) de la ventana del juego sobre la cual se superpondrá el overlay.
-- **`videogameId`**: ID del videojuego para sincronizar las mecánicas específicas.
+Servicios locales (`src/network.cpp`):
+- Backend del cliente: `http://127.0.0.1:3333`.
+- Servidor del mod/videojuego: `http://localhost:7878`.
+
+**F3** muestra u oculta el overlay. Al cerrar la ventana del videojuego, el overlay termina.
